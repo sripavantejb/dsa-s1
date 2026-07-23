@@ -1,0 +1,1594 @@
+[
+  {
+    "id": "q001",
+    "order": 1,
+    "topic": "Arrays",
+    "title": "Second Largest Number",
+    "link": "https://learning.ccbp.in/question/4ee068d9-5cac-47dc-89c1-f4ac6ea9de32",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q002",
+    "order": 2,
+    "topic": "Arrays",
+    "title": "Check if Array is Sorted",
+    "link": "https://learning.ccbp.in/question/15e3c68c-9062-4751-8d17-854458821f05",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q003",
+    "order": 3,
+    "topic": "Arrays",
+    "title": "Left Array Rotation by K Places",
+    "link": "https://learning.ccbp.in/question/9a59b058-931d-4ae5-a054-d146cff7b898",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q004",
+    "order": 4,
+    "topic": "Arrays",
+    "title": "Find Missing Number in the Array",
+    "link": "https://learning.ccbp.in/question/26cd7c5d-81c2-487a-9cac-998d97133ac6",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q005",
+    "order": 5,
+    "topic": "Arrays",
+    "title": "Maximize Share Profit",
+    "link": "https://learning.ccbp.in/question/6e42becb-950e-49cb-87c4-b5cbe7ba6fb1",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q006",
+    "order": 6,
+    "topic": "Arrays",
+    "title": "Union Of Two Sorted Arrays",
+    "link": "https://learning.ccbp.in/question/587a2d2e-55f0-48b9-87b4-2e843f68cbcf",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q007",
+    "order": 7,
+    "topic": "Arrays",
+    "title": "Intersection of two sorted arrays",
+    "link": "https://learning.ccbp.in/question/34d25569-55da-4de9-bde2-107637024792",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q008",
+    "order": 8,
+    "topic": "Arrays",
+    "title": "Grid Rotation",
+    "link": "https://learning.ccbp.in/question/ba3c66c8-c837-4dbb-a586-dc756f4bb2d6",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q009",
+    "order": 9,
+    "topic": "Arrays",
+    "title": "Zero Fill Matrix",
+    "link": "https://learning.ccbp.in/question/204ba663-11c3-4e90-ae83-cd52d27ce649",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q010",
+    "order": 10,
+    "topic": "Arrays",
+    "title": "3Sum",
+    "link": "https://learning.ccbp.in/question/530b93fe-310b-46fe-9f5a-4eafb3ea5519",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q011",
+    "order": 11,
+    "topic": "Arrays",
+    "title": "Merge Two Sorted Arrays",
+    "link": "https://learning.ccbp.in/question/caed61d0-68ed-4b34-bd3d-99f7f56bc8a4",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q012",
+    "order": 12,
+    "topic": "Arrays",
+    "title": "Maximum Subarray Product",
+    "link": "https://learning.ccbp.in/question/a0a2d61f-aa51-45a1-abb6-69eaf90dda3c",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q013",
+    "order": 13,
+    "topic": "Arrays",
+    "title": "Largest Subarray with Zero Sum",
+    "link": "https://learning.ccbp.in/question/1d95df54-e934-4cea-bc12-d1b36ae15497",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q014",
+    "order": 14,
+    "topic": "Arrays",
+    "title": "Majority Element I",
+    "link": "https://learning.ccbp.in/question/d94c468e-8d2a-4f79-bb1d-52dd07e3b8a3",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q015",
+    "order": 15,
+    "topic": "Arrays",
+    "title": "Majority Element II",
+    "link": "https://learning.ccbp.in/question/b1693e68-4569-4024-9032-8e8aca2b0e63",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q016",
+    "order": 16,
+    "topic": "Arrays",
+    "title": "Missing & Repeating Elements",
+    "link": "https://learning.ccbp.in/question/122f7bb4-a3df-4106-ae94-4038eebbd5d6",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q017",
+    "order": 17,
+    "topic": "Arrays",
+    "title": "Maximum Subarray Sum (Kadane's Algorithm)",
+    "link": "https://learning.ccbp.in/question/30d5ce14-8819-4717-a685-75996b0367fd",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q018",
+    "order": 18,
+    "topic": "Arrays",
+    "title": "Maximum Sum in Circular Sensor Data",
+    "link": "https://learning.ccbp.in/question/a9c04d4c-ed09-43bd-ba7b-7deb142a7dfa",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q019",
+    "order": 19,
+    "topic": "Arrays",
+    "title": "array rearrangement",
+    "link": "https://learning.ccbp.in/question/ef23b140-3636-4223-9593-1a3c1b936488",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q020",
+    "order": 20,
+    "topic": "Arrays",
+    "title": "Spiral Matrix",
+    "link": "https://learning.ccbp.in/question/1722944d-d523-4fd4-a551-6e9ee17e67e7",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q021",
+    "order": 21,
+    "topic": "Arrays",
+    "title": "Largest Subarray Sum",
+    "link": "https://learning.ccbp.in/question/30d5ce14-8819-4717-a685-75996b0367fd",
+    "difficulty": "MEDIUM"
+  },
+  {
+    "id": "q022",
+    "order": 22,
+    "topic": "Arrays",
+    "title": "Find the Next Permutation",
+    "link": "https://learning.ccbp.in/question/1cb26dd8-1fe2-4873-84b3-e602d8747ee9",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q023",
+    "order": 23,
+    "topic": "Sliding Window",
+    "title": "Move Zeros to End",
+    "link": "https://learning.ccbp.in/question/db40d23a-47d1-4403-892c-66ad827bee5a",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q024",
+    "order": 24,
+    "topic": "Sliding Window",
+    "title": "Sort 0, 1, 2 (Dutch National Flag Algorithm)",
+    "link": "https://learning.ccbp.in/question/34eb42b5-fa3f-488a-a979-f36c7f5c1556",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q025",
+    "order": 25,
+    "topic": "Sliding Window",
+    "title": "Max Consecutive Ones II",
+    "link": "https://learning.ccbp.in/question/f1273238-a77c-4d9d-aff5-c8484bd04b7b",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q026",
+    "order": 26,
+    "topic": "Sliding Window",
+    "title": "Max Consecutive Ones III",
+    "link": "https://learning.ccbp.in/question/b233437a-9698-41a5-83bc-7165d4f52599",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q027",
+    "order": 27,
+    "topic": "Sliding Window",
+    "title": "Fruits & Baskets",
+    "link": "https://learning.ccbp.in/question/26e595b6-d52b-48d9-81df-ab733e76ec95",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q028",
+    "order": 28,
+    "topic": "Sliding Window",
+    "title": "Max Points from Cards",
+    "link": "https://learning.ccbp.in/question/765d4d46-d1fc-457f-8174-07369800caa3",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q029",
+    "order": 29,
+    "topic": "Sliding Window",
+    "title": "Longest Substring Without Repeating Characters",
+    "link": "https://learning.ccbp.in/question/6122a8f7-be46-4361-a499-228a6c37a332",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q030",
+    "order": 30,
+    "topic": "Sliding Window",
+    "title": "Count Good Subarrays",
+    "link": "https://learning.ccbp.in/question/a0a2924e-a788-458e-a450-6dbfce423255",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q031",
+    "order": 31,
+    "topic": "Sliding Window",
+    "title": "Binary Arrays with Sum K",
+    "link": "https://learning.ccbp.in/question/1997bcb6-3fb1-411b-b54d-43f9ef9ffcc8",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q032",
+    "order": 32,
+    "topic": "Sliding Window",
+    "title": "Longest Substring with At Most K Distinct Characters",
+    "link": "https://learning.ccbp.in/question/54af45a1-50b8-4e78-a5b6-63b557499ce8",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q033",
+    "order": 33,
+    "topic": "Sliding Window",
+    "title": "Minimum Window Substring",
+    "link": "https://learning.ccbp.in/question/165d0653-bebd-4d7a-bdb7-57f32f6cd85b",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q034",
+    "order": 34,
+    "topic": "Sliding Window",
+    "title": "Substring with All Three Characters",
+    "link": "https://learning.ccbp.in/question/8792a34a-585a-4080-9492-970a18845d4f",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q035",
+    "order": 35,
+    "topic": "Prefix Array & Suffix arrays",
+    "title": "Trapping Rain Water",
+    "link": "https://learning.ccbp.in/question/3abb86d8-dd17-4582-8113-095a561cd0af",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q036",
+    "order": 36,
+    "topic": "Prefix Array & Suffix arrays",
+    "title": "Range Sum Query",
+    "link": "https://leetcode.com/problems/range-sum-query-immutable/description/",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q037",
+    "order": 37,
+    "topic": "Prefix Array & Suffix arrays",
+    "title": "Pivot Index",
+    "link": "https://leetcode.com/problems/find-pivot-index/description/",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q038",
+    "order": 38,
+    "topic": "Prefix Array & Suffix arrays",
+    "title": "Product of Array Except Self",
+    "link": "https://leetcode.com/problems/product-of-array-except-self/description/",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q039",
+    "order": 39,
+    "topic": "Strings",
+    "title": "Strings",
+    "link": "",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q040",
+    "order": 40,
+    "topic": "Strings",
+    "title": "reverse words in a string",
+    "link": "https://learning.ccbp.in/question/7594e375-c522-4be6-bb40-221096c2bf4f",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q041",
+    "order": 41,
+    "topic": "Strings",
+    "title": "Palindrome check",
+    "link": "https://learning.ccbp.in/question/25d6b2c1-d172-4fdb-9610-8271f588dd57",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q042",
+    "order": 42,
+    "topic": "Strings",
+    "title": "Valid Anagram",
+    "link": "https://learning.ccbp.in/question/97a9bfba-bc6d-427c-b278-8be52c9c9abf",
+    "difficulty": "EASY"
+  },
+  {
+    "id": "q043",
+    "order": 43,
+    "topic": "Strings",
+    "title": "Longest Common Prefix",
+    "link": "https://learning.ccbp.in/question/05ba0c74-a09d-4a22-b6cb-40f2c376d82b",
+    "difficulty": "EASY"
+  },
+  {
+    "id": "q044",
+    "order": 44,
+    "topic": "Strings",
+    "title": "Valid Palindrome",
+    "link": "https://leetcode.com/problems/valid-palindrome/",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q045",
+    "order": 45,
+    "topic": "Strings",
+    "title": "Isomorphic Strings",
+    "link": "https://learning.ccbp.in/question/d0ca5bea-a00a-42b0-a88e-b7b452470773",
+    "difficulty": "EASY"
+  },
+  {
+    "id": "q046",
+    "order": 46,
+    "topic": "Strings",
+    "title": "Sort characters by frequency",
+    "link": "https://learning.ccbp.in/question/13aac9c8-fa3f-4753-b02b-669f2f9f1623",
+    "difficulty": "MEDIUM"
+  },
+  {
+    "id": "q047",
+    "order": 47,
+    "topic": "Strings",
+    "title": "Remove Outermost Parentheses",
+    "link": "https://learning.ccbp.in/question/96826452-847c-4740-9000-4794d4813b25",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q048",
+    "order": 48,
+    "topic": "Strings",
+    "title": "Group Anagrams",
+    "link": "https://learning.ccbp.in/question/f04e0fd8-9ae7-4071-9c02-edb126bf5ee1",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q049",
+    "order": 49,
+    "topic": "Strings",
+    "title": "Largest Odd Number in a String",
+    "link": "https://learning.ccbp.in/question/a04190bf-c2a9-4975-814f-a906afd10d80",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q050",
+    "order": 50,
+    "topic": "Strings",
+    "title": "Remove Adjacent Duplicates",
+    "link": "https://leetcode.com/problems/remove-all-adjacent-duplicates-in-string/description/",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q051",
+    "order": 51,
+    "topic": "Stack & Queues",
+    "title": "Balanced Parenthesis",
+    "link": "https://learning.ccbp.in/question/af9a3af2-3528-4f85-8eb5-af68b93d0a77",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q052",
+    "order": 52,
+    "topic": "Stack & Queues",
+    "title": "Implement Queue Using Stack",
+    "link": "https://learning.ccbp.in/question/570dbd7e-7d12-46e4-8469-fc3f9c4a897a",
+    "difficulty": "EASY"
+  },
+  {
+    "id": "q053",
+    "order": 53,
+    "topic": "Stack & Queues",
+    "title": "Implement Stack Using Queue",
+    "link": "https://learning.ccbp.in/question/ce28249d-ceca-4710-81a2-a8b7fd4c5816",
+    "difficulty": "EASY"
+  },
+  {
+    "id": "q054",
+    "order": 54,
+    "topic": "Stack & Queues",
+    "title": "Queue Implementation Using Array",
+    "link": "https://learning.ccbp.in/question/11208196-11e6-445c-91ad-9f63408ab452",
+    "difficulty": "EASY"
+  },
+  {
+    "id": "q055",
+    "order": 55,
+    "topic": "Stack & Queues",
+    "title": "Stack Implementation Using Linked List",
+    "link": "https://learning.ccbp.in/question/64ae15a7-b944-46a5-b6f2-4d6c4edc763d",
+    "difficulty": "EASY"
+  },
+  {
+    "id": "q056",
+    "order": 56,
+    "topic": "Stack & Queues",
+    "title": "Queue Implementation Using Linked List",
+    "link": "https://learning.ccbp.in/question/1863b480-e113-46a8-97ea-94c3eb902297",
+    "difficulty": "EASY"
+  },
+  {
+    "id": "q057",
+    "order": 57,
+    "topic": "Stack & Queues",
+    "title": "Largest Rectangle in Histogram",
+    "link": "https://learning.ccbp.in/question/3cd39e61-49e4-416a-ad6a-51364826dd85",
+    "difficulty": "HARD"
+  },
+  {
+    "id": "q058",
+    "order": 58,
+    "topic": "Stack & Queues",
+    "title": "Smart Bookshelf",
+    "link": "https://learning.ccbp.in/question/09b73991-d663-46f9-ae15-65f78695b67b",
+    "difficulty": "HARD"
+  },
+  {
+    "id": "q059",
+    "order": 59,
+    "topic": "Stack & Queues",
+    "title": "Next Greater Element",
+    "link": "https://learning.ccbp.in/question/a150d6da-0a35-46c0-be6f-d40659ccff97",
+    "difficulty": "MEDIUM"
+  },
+  {
+    "id": "q060",
+    "order": 60,
+    "topic": "Stack & Queues",
+    "title": "Summing Ranges within Subarrays",
+    "link": "https://learning.ccbp.in/question/8110a914-070a-4080-ae5f-4149a1f283ff",
+    "difficulty": "MEDIUM"
+  },
+  {
+    "id": "q061",
+    "order": 61,
+    "topic": "Stack & Queues",
+    "title": "Implement Min Stack",
+    "link": "https://learning.ccbp.in/question/afc6fa55-24fd-46bf-b167-edaca2ef4ad5",
+    "difficulty": "MEDIUM"
+  },
+  {
+    "id": "q062",
+    "order": 62,
+    "topic": "Stack & Queues",
+    "title": "Remove K Digits",
+    "link": "https://learning.ccbp.in/question/44bb21d4-ca1e-41cf-9b53-7b21ff39fc62",
+    "difficulty": "MEDIUM"
+  },
+  {
+    "id": "q063",
+    "order": 63,
+    "topic": "Stack & Queues",
+    "title": "Stock Span",
+    "link": "https://learning.ccbp.in/question/710ffc08-3649-41c1-b860-abff518f8bcf",
+    "difficulty": "MEDIUM"
+  },
+  {
+    "id": "q064",
+    "order": 64,
+    "topic": "Stack & Queues",
+    "title": "Sum of Min Subarray Elements",
+    "link": "https://learning.ccbp.in/course?c_id=9cf6c592-2f9a-4a0b-9eb4-0b752b63a313&q_id=31bdbd8f-de2c-4794-b20e-232d3d61ae69&s_id=e59ab10b-b5fd-4f9c-b204-4c631b17bf25&t_id=a23abae1-e18d-475f-a6f0-94a17cb6fa26",
+    "difficulty": "MEDIUM"
+  },
+  {
+    "id": "q065",
+    "order": 65,
+    "topic": "Stack & Queues",
+    "title": "Asteroid Collision",
+    "link": "https://learning.ccbp.in/question/10f31d59-fced-483c-987f-46dacd88aed1",
+    "difficulty": "MEDIUM"
+  },
+  {
+    "id": "q066",
+    "order": 66,
+    "topic": "Stack & Queues",
+    "title": "Infix to Postfix",
+    "link": "https://learning.ccbp.in/question/3ba720e1-778c-44f8-a2e5-98a9b6598899",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q067",
+    "order": 67,
+    "topic": "Stack & Queues",
+    "title": "Next Greater Element II",
+    "link": "https://learning.ccbp.in/question/7c1e9f1d-dffa-4690-83b0-ae69ef5e0d31",
+    "difficulty": "MEDIUM"
+  },
+  {
+    "id": "q068",
+    "order": 68,
+    "topic": "Recursion",
+    "title": "Recursion",
+    "link": "",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q069",
+    "order": 69,
+    "topic": "Recursion",
+    "title": "Valid Parentheses",
+    "link": "https://learning.ccbp.in/question/1b219d0a-313f-4bda-ad9c-21c5034fcdde",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q070",
+    "order": 70,
+    "topic": "Recursion",
+    "title": "Factorial of a Number",
+    "link": "https://learning.ccbp.in/question/ba385a40-5c94-422a-9e01-6709c9a05c84",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q071",
+    "order": 71,
+    "topic": "Recursion",
+    "title": "Fibonacci Number",
+    "link": "https://learning.ccbp.in/question/ba5a8483-d407-43d1-b18d-c3e0acf0f9b8",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q072",
+    "order": 72,
+    "topic": "Recursion",
+    "title": "Palindrome Check Using Recursion",
+    "link": "https://learning.ccbp.in/question/ef1abce2-735c-425d-adb5-d8bd008daa9c",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q073",
+    "order": 73,
+    "topic": "Recursion",
+    "title": "Print All Subsequences of an Array",
+    "link": "https://learning.ccbp.in/question/4c380d2e-9f96-4b7e-8d8c-b3a957d64478",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q074",
+    "order": 74,
+    "topic": "Recursion",
+    "title": "Subsequences With Sum K",
+    "link": "https://learning.ccbp.in/question/899166ca-2753-44ea-8fee-96ab98976b64",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q075",
+    "order": 75,
+    "topic": "Recursion / Backtracking",
+    "title": "Backtracking",
+    "link": "",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q076",
+    "order": 76,
+    "topic": "Recursion / Backtracking",
+    "title": "All Palindromic Splits of a String",
+    "link": "https://learning.ccbp.in/question/e430e226-6d17-4661-a974-21009ed140fb",
+    "difficulty": "MEDIUM"
+  },
+  {
+    "id": "q077",
+    "order": 77,
+    "topic": "Recursion / Backtracking",
+    "title": "Implement Pow(x, n)",
+    "link": "https://learning.ccbp.in/question/d4333c94-1fec-427b-bff0-c511649dccbc",
+    "difficulty": "MEDIUM"
+  },
+  {
+    "id": "q078",
+    "order": 78,
+    "topic": "Recursion / Backtracking",
+    "title": "Sudoku Solver",
+    "link": "https://learning.ccbp.in/question/8a3a2422-51af-4293-b010-f59114e29c01",
+    "difficulty": "HARD"
+  },
+  {
+    "id": "q079",
+    "order": 79,
+    "topic": "Recursion / Backtracking",
+    "title": "Combination Sum II",
+    "link": "https://learning.ccbp.in/question/a4a48560-e9b6-471b-9944-070273449c84",
+    "difficulty": "MEDIUM"
+  },
+  {
+    "id": "q080",
+    "order": 80,
+    "topic": "Binary Search",
+    "title": "Binary Search",
+    "link": "",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q081",
+    "order": 81,
+    "topic": "Binary Search",
+    "title": "Find Square root of N",
+    "link": "https://learning.ccbp.in/question/0be3356e-b3f6-4548-aa63-941cb0d3e9e2",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q082",
+    "order": 82,
+    "topic": "Binary Search",
+    "title": "Lower Bound",
+    "link": "https://learning.ccbp.in/question/52828fa6-553b-4e73-bc25-af2b0440fd56",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q083",
+    "order": 83,
+    "topic": "Binary Search",
+    "title": "Upper Bound",
+    "link": "https://learning.ccbp.in/question/d15ee9dd-5780-4097-a3c5-c954802e2b82",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q084",
+    "order": 84,
+    "topic": "Binary Search",
+    "title": "Find Peak Element",
+    "link": "https://learning.ccbp.in/question/d998706e-db49-48ed-8653-d11bdb35ab4e",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q085",
+    "order": 85,
+    "topic": "Binary Search",
+    "title": "Find Peak Element II",
+    "link": "https://learning.ccbp.in/question/8b3ced61-5149-42c2-ab57-48ba6589b7c8",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q086",
+    "order": 86,
+    "topic": "Binary Search",
+    "title": "Search Element in Rotated Sorted Array",
+    "link": "https://learning.ccbp.in/question/cf913137-5cda-450e-b060-7c472363a564",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q087",
+    "order": 87,
+    "topic": "Binary Search",
+    "title": "Number of Occurrences",
+    "link": "https://learning.ccbp.in/question/6052e8bd-0b74-4df5-829e-3a747c8a06e2",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q088",
+    "order": 88,
+    "topic": "Binary Search",
+    "title": "Find the Pivot Element",
+    "link": "https://leetcode.com/problems/find-pivot-index/description/",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q089",
+    "order": 89,
+    "topic": "Binary Search",
+    "title": "Find Minimum in Rotated Sorted Array",
+    "link": "https://learning.ccbp.in/question/49b70e38-d711-445e-81b2-5e111c1d52ee",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q090",
+    "order": 90,
+    "topic": "Binary Search",
+    "title": "Unique Element in Sorted Array",
+    "link": "https://learning.ccbp.in/question/531a4bb7-09a3-4464-9d51-a4e54dfb872c",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q091",
+    "order": 91,
+    "topic": "Binary Search",
+    "title": "Search in a 2D Sorted Matrix",
+    "link": "https://learning.ccbp.in/question/20b2de78-30ec-45cd-9cbc-ac603799e37e",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q092",
+    "order": 92,
+    "topic": "Binary Search",
+    "title": "Bouquet Formation",
+    "link": "https://learning.ccbp.in/question/09e03aad-a632-4bea-b3e9-415e6df78076",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q093",
+    "order": 93,
+    "topic": "Binary Search",
+    "title": "Minimum Positive Divisor",
+    "link": "https://learning.ccbp.in/question/63190e53-a492-47bd-b895-59c1b1ab8efd",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q094",
+    "order": 94,
+    "topic": "Binary Search",
+    "title": "Minimum Capacity to Transport Parcels",
+    "link": "https://learning.ccbp.in/question/23672106-566f-4ea1-9f5c-28e8c3cd4316",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q095",
+    "order": 95,
+    "topic": "Binary Search",
+    "title": "Minimize Maximum Distance",
+    "link": "https://learning.ccbp.in/question/4a5939e9-7826-4086-87fd-24427aa25a2e",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q096",
+    "order": 96,
+    "topic": "Binary Search",
+    "title": "Balanced Workload",
+    "link": "https://learning.ccbp.in/question/0627db9b-2f05-4b7b-bbf6-fc304f3bc129",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q097",
+    "order": 97,
+    "topic": "Binary Search",
+    "title": "Book Allocation",
+    "link": "https://learning.ccbp.in/question/02db9453-f416-439d-afe2-bbcad53bede0",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q098",
+    "order": 98,
+    "topic": "Binary Search",
+    "title": "Aggressive Cows",
+    "link": "https://learning.ccbp.in/question/ddcdcddf-3a88-4f63-9b06-e59fbcf2b4a6",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q099",
+    "order": 99,
+    "topic": "Bit Manipulation",
+    "title": "Bit Manipulation",
+    "link": "",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q100",
+    "order": 100,
+    "topic": "Bit Manipulation",
+    "title": "Binary to Decimal Conversion",
+    "link": "https://learning.ccbp.in/question/359513d6-072f-4beb-b7bc-21e2b0dedd07",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q101",
+    "order": 101,
+    "topic": "Bit Manipulation",
+    "title": "Bit Manipulation Techniques I",
+    "link": "https://learning.ccbp.in/question/1e13d32b-ae92-4411-b560-d1e50f5a226d",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q102",
+    "order": 102,
+    "topic": "Bit Manipulation",
+    "title": "Remove the Rightmost Set Bit",
+    "link": "https://learning.ccbp.in/question/e3449e97-e402-4d9e-bf32-5f95b264ec47",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q103",
+    "order": 103,
+    "topic": "Bit Manipulation",
+    "title": "Check if Number is Power of 2",
+    "link": "https://learning.ccbp.in/question/49eb796c-e779-48e7-b02b-06e71e85b40d",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q104",
+    "order": 104,
+    "topic": "Bit Manipulation",
+    "title": "Count Number of Set Bits",
+    "link": "https://learning.ccbp.in/question/f86b5313-5f5c-48ab-83dd-3b530a910974",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q105",
+    "order": 105,
+    "topic": "Bit Manipulation",
+    "title": "Minimum Bit Flips to Convert a Number",
+    "link": "https://learning.ccbp.in/question/63070bb6-f62b-4d49-8844-00b532793ac5",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q106",
+    "order": 106,
+    "topic": "Bit Manipulation",
+    "title": "Single Element II",
+    "link": "https://learning.ccbp.in/question/f078e8c6-243a-4e4d-b89a-1d2682dcd995",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q107",
+    "order": 107,
+    "topic": "Bit Manipulation",
+    "title": "Single Number III",
+    "link": "https://learning.ccbp.in/question/49cc6281-5d50-446e-a67d-ddf7afb9854b",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q108",
+    "order": 108,
+    "topic": "Bit Manipulation",
+    "title": "Add Two Numbers Without Using + or -",
+    "link": "https://learning.ccbp.in/question/c0e53ed6-c437-4e3f-852e-096c7042ef09",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q109",
+    "order": 109,
+    "topic": "Bit Manipulation",
+    "title": "Bitwise XOR For a Given Range",
+    "link": "https://learning.ccbp.in/question/fb62bc0f-e469-4790-b990-30adb7226e28",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q110",
+    "order": 110,
+    "topic": "Bit Manipulation",
+    "title": "Triplicate Anomaly Detection",
+    "link": "https://learning.ccbp.in/question/706f4ceb-49e8-49a3-bca3-0f24be658a8f",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q111",
+    "order": 111,
+    "topic": "Linked List",
+    "title": "Linked List",
+    "link": "",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q112",
+    "order": 112,
+    "topic": "Linked List",
+    "title": "Middle of the Linked List",
+    "link": "https://learning.ccbp.in/question/c35bd7fc-bfff-4ba5-bbfe-5f80149dd031",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q113",
+    "order": 113,
+    "topic": "Linked List",
+    "title": "Delete Kth Node of the Linked List",
+    "link": "https://learning.ccbp.in/question/16e3fa60-a0ab-4f06-a56b-d9524cb73882",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q114",
+    "order": 114,
+    "topic": "Linked List",
+    "title": "Merge Two Sorted Linked Lists",
+    "link": "https://learning.ccbp.in/question/5e68ec73-ef17-4785-a38c-a7cb376f8681",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q115",
+    "order": 115,
+    "topic": "Linked List",
+    "title": "Remove Duplicates from Sorted Linked List",
+    "link": "https://learning.ccbp.in/question/07035579-ef9d-41ad-8895-669154a784fa",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q116",
+    "order": 116,
+    "topic": "Linked List",
+    "title": "Palindrome Linked List",
+    "link": "https://learning.ccbp.in/question/fed5e038-3b5c-48aa-9332-92e8dca48dfa",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q117",
+    "order": 117,
+    "topic": "Linked List",
+    "title": "Intersection of Two Linked Lists",
+    "link": "https://learning.ccbp.in/question/90aa28a5-ec62-4eb0-9852-13a2f1bfb441",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q118",
+    "order": 118,
+    "topic": "Linked List",
+    "title": "Reverse a Linked List",
+    "link": "https://learning.ccbp.in/question/1e493f3d-0c94-4b07-b317-ec76a34022ae",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q119",
+    "order": 119,
+    "topic": "Linked List",
+    "title": "Add Two Numbers",
+    "link": "https://learning.ccbp.in/question/59ec352c-b4d8-4dd1-bfdb-6ad85190f198",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q120",
+    "order": 120,
+    "topic": "Linked List",
+    "title": "Remove Nth Node From End",
+    "link": "https://learning.ccbp.in/question/d4496366-f331-492a-a5d7-a9de55a79dc4",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q121",
+    "order": 121,
+    "topic": "Linked List",
+    "title": "Sort Linked List",
+    "link": "https://learning.ccbp.in/question/75de70f8-f643-43d2-8fc0-4e1b29e47a3a",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q122",
+    "order": 122,
+    "topic": "Linked List",
+    "title": "Detect Cycle in Linked List",
+    "link": "https://learning.ccbp.in/question/3dcdba27-0c24-45e2-b829-d5174503fab2",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q123",
+    "order": 123,
+    "topic": "Linked List",
+    "title": "Remove Linked List Elements",
+    "link": "https://leetcode.com/problems/remove-linked-list-elements/description/",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q124",
+    "order": 124,
+    "topic": "Linked List",
+    "title": "Reverse a Doubly Linked List",
+    "link": "https://learning.ccbp.in/question/1c6786c5-6a6f-4980-960d-903d8c1f0580",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q125",
+    "order": 125,
+    "topic": "Linked List",
+    "title": "Even and Odd Linked List",
+    "link": "https://learning.ccbp.in/question/f341c8f2-897d-45a2-a85a-3a17ca12d60f",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q126",
+    "order": 126,
+    "topic": "Linked List",
+    "title": "Add One to Linked List",
+    "link": "https://learning.ccbp.in/question/3cd4408a-5d1e-4da1-be25-d67f5ada9e87",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q127",
+    "order": 127,
+    "topic": "Linked List",
+    "title": "Flatten a Linked List",
+    "link": "https://learning.ccbp.in/question/5fcbec24-ca69-4f93-b5e3-714230235a56",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q128",
+    "order": 128,
+    "topic": "Linked List",
+    "title": "LRU Cache",
+    "link": "https://learning.ccbp.in/question/8132935b-a3c1-4d56-92ed-e298a1979e39",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q129",
+    "order": 129,
+    "topic": "Linked List",
+    "title": "Browser History Design",
+    "link": "https://leetcode.com/problems/design-browser-history/description/",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q130",
+    "order": 130,
+    "topic": "Trees",
+    "title": "Trees",
+    "link": "",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q131",
+    "order": 131,
+    "topic": "Trees",
+    "title": "Binary Tree Representation",
+    "link": "https://learning.ccbp.in/question/3865d4d0-5e0e-497e-8c9f-1d8766a129f3",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q132",
+    "order": 132,
+    "topic": "Trees",
+    "title": "Inorder Traversal",
+    "link": "https://learning.ccbp.in/question/ba4cb7a7-7ed0-4257-b7bc-4e0fc9163012",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q133",
+    "order": 133,
+    "topic": "Trees",
+    "title": "Preorder Traversal",
+    "link": "https://learning.ccbp.in/question/fd12a4c0-dcc1-4d1b-83c7-a4558b37ea91",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q134",
+    "order": 134,
+    "topic": "Trees",
+    "title": "Postorder Traversal",
+    "link": "https://learning.ccbp.in/question/805ee6e2-16e6-4257-8868-f29fad63736b",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q135",
+    "order": 135,
+    "topic": "Trees",
+    "title": "Level Order Traversal",
+    "link": "https://learning.ccbp.in/question/57238029-d58a-46af-9846-5cb7e2f328c7",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q136",
+    "order": 136,
+    "topic": "Trees",
+    "title": "Height of a Binary Tree",
+    "link": "https://learning.ccbp.in/question/98fad24e-a99d-46f3-8068-bf7d34a5c50c",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q137",
+    "order": 137,
+    "topic": "Trees",
+    "title": "Balanced Binary Tree",
+    "link": "https://learning.ccbp.in/question/4bcc626c-7f56-4d6a-a63d-9015d1f8cfe0",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q138",
+    "order": 138,
+    "topic": "Trees",
+    "title": "Diameter of Binary Tree",
+    "link": "https://learning.ccbp.in/question/8766f6a5-6527-4b1c-9cd8-002aa5103f5c",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q139",
+    "order": 139,
+    "topic": "Trees",
+    "title": "Product of Right Leaves",
+    "link": "https://learning.ccbp.in/question/b0317f70-bec5-447f-97ad-db608318239a",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q140",
+    "order": 140,
+    "topic": "Trees",
+    "title": "Assign Colleagues Employees to the Same Project",
+    "link": "https://learning.ccbp.in/question/9acdc04c-4cbb-4d19-be7e-11eeea63e834",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q141",
+    "order": 141,
+    "topic": "Trees",
+    "title": "Calculate Binary Numbers from Root to Leaf",
+    "link": "https://learning.ccbp.in/question/d2dd99fd-77cf-4d90-8996-3324adeb73b2",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q142",
+    "order": 142,
+    "topic": "Trees",
+    "title": "Maximum Path Sum",
+    "link": "https://learning.ccbp.in/question/b38da9cd-32e6-41aa-8323-4e9425300286",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q143",
+    "order": 143,
+    "topic": "Trees",
+    "title": "Zig-Zag Level Order Traversal",
+    "link": "https://learning.ccbp.in/question/071b750e-60e6-4ae0-a0d9-d5b891ea0c43",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q144",
+    "order": 144,
+    "topic": "Trees",
+    "title": "Top View of Binary Tree",
+    "link": "https://launchpad.ccbp.in/course?c_id=9cf6c592-2f9a-4a0b-9eb4-0b752b63a313&q_id=52bee844-794c-4dfe-91c3-0687d2f6a19a&s_id=039c83a8-0016-4f63-8f99-b81161cf49d8&t_id=1201f4e2-95cf-497a-aa69-aa1f2f4b55d1",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q145",
+    "order": 145,
+    "topic": "Trees",
+    "title": "Bottom View of a Binary Tree",
+    "link": "https://learning.ccbp.in/question/bf8daa14-99fb-4443-be9b-6936bd478856",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q146",
+    "order": 146,
+    "topic": "Trees",
+    "title": "Right View of Binary Tree",
+    "link": "https://learning.ccbp.in/question/6df35ccc-2d73-4f52-9fba-c73927cea045",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q147",
+    "order": 147,
+    "topic": "Trees",
+    "title": "Left View of Binary Tree",
+    "link": "https://learning.ccbp.in/question/ebd358f6-881b-43ed-87ca-847def1ff3be",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q148",
+    "order": 148,
+    "topic": "Trees",
+    "title": "Lowest Common Ancestor of a Binary Tree",
+    "link": "https://learning.ccbp.in/question/1aa7f6cb-47a6-46d4-99c1-43038bf8147e",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q149",
+    "order": 149,
+    "topic": "Trees",
+    "title": "Maximum Width of a Binary Tree",
+    "link": "https://learning.ccbp.in/question/4f41c6a4-9f37-4a19-8797-f9fe73f8270c",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q150",
+    "order": 150,
+    "topic": "Trees",
+    "title": "All Nodes Distance X in Binary Tree",
+    "link": "https://learning.ccbp.in/question/dddeefd0-55d3-4cc7-b08a-6c968dd13490",
+    "difficulty": "MEDIUM"
+  },
+  {
+    "id": "q151",
+    "order": 151,
+    "topic": "Trees",
+    "title": "Minimum Sprinklers to Water the Garden",
+    "link": "https://learning.ccbp.in/question/5260f13b-8810-4bc7-ad10-677479da9ec3",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q152",
+    "order": 152,
+    "topic": "Binary Search Trees (BST)",
+    "title": "Binary Search Trees (BST)",
+    "link": "",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q153",
+    "order": 153,
+    "topic": "Binary Search Trees (BST)",
+    "title": "Insertion in Binary Search Tree",
+    "link": "https://learning.ccbp.in/question/f26cac35-0042-4e7b-b0d6-9480dac2aa5b",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q154",
+    "order": 154,
+    "topic": "Binary Search Trees (BST)",
+    "title": "Deletion in Binary Search Tree",
+    "link": "https://learning.ccbp.in/question/02538296-f076-4a77-aa6c-a238dde6b611",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q155",
+    "order": 155,
+    "topic": "Binary Search Trees (BST)",
+    "title": "Validate a Binary Search Tree",
+    "link": "https://learning.ccbp.in/question/c300bc74-5479-4e4a-885c-3bd658c0c140",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q156",
+    "order": 156,
+    "topic": "Binary Search Trees (BST)",
+    "title": "Predecessor in BST",
+    "link": "https://learning.ccbp.in/question/43202f32-96cf-49a7-83ff-1bba0a5d53d3",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q157",
+    "order": 157,
+    "topic": "Binary Search Trees (BST)",
+    "title": "Successor in BST",
+    "link": "https://learning.ccbp.in/question/a3ab1a6c-9212-405e-8b98-ba7a1a5ce798",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q158",
+    "order": 158,
+    "topic": "Binary Search Trees (BST)",
+    "title": "Kth Smallest Element in BST",
+    "link": "https://learning.ccbp.in/question/1bcedade-fc61-4fe9-8fe5-af3eebb2cf30",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q159",
+    "order": 159,
+    "topic": "Binary Search Trees (BST)",
+    "title": "Kth Largest Element",
+    "link": "https://learning.ccbp.in/question/c5d04967-7430-4986-854d-6e04c2ed3810",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q160",
+    "order": 160,
+    "topic": "Binary Search Trees (BST)",
+    "title": "Check if a Tree is a BST or Not",
+    "link": "https://learning.ccbp.in/question/c300bc74-5479-4e4a-885c-3bd658c0c140",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q161",
+    "order": 161,
+    "topic": "Binary Search Trees (BST)",
+    "title": "Preorder Traversal",
+    "link": "https://learning.ccbp.in/question/fd12a4c0-dcc1-4d1b-83c7-a4558b37ea91",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q162",
+    "order": 162,
+    "topic": "Binary Search Trees (BST)",
+    "title": "Merge Two BSTS",
+    "link": "https://learning.ccbp.in/question/f8cbf1c0-f358-490b-8266-221eda321fdd",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q163",
+    "order": 163,
+    "topic": "Binary Search Trees (BST)",
+    "title": "Next Larger Value in a Binary Search Tree",
+    "link": "https://learning.ccbp.in/question/4750187a-4667-448f-ab9c-a6028eb6e625",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q164",
+    "order": 164,
+    "topic": "Heaps",
+    "title": "Heaps",
+    "link": "",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q165",
+    "order": 165,
+    "topic": "Heaps",
+    "title": "Implement Min Heap",
+    "link": "https://learning.ccbp.in/question/9d650f75-807f-4a5a-be47-ad43f0f141f6",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q166",
+    "order": 166,
+    "topic": "Heaps",
+    "title": "Implement Max Heap",
+    "link": "https://learning.ccbp.in/question/3dcbdedc-45b2-4487-b63d-9334d9e941ce",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q167",
+    "order": 167,
+    "topic": "Heaps",
+    "title": "Convert Min Heap to Max Heap",
+    "link": "https://learning.ccbp.in/question/0c82df0c-a757-4d82-9714-d2a3dd7c5cf2",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q168",
+    "order": 168,
+    "topic": "Heaps",
+    "title": "Leaderboard in an Online Game",
+    "link": "https://learning.ccbp.in/question/89980876-2e69-4ec2-80be-3d892606f9bd",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q169",
+    "order": 169,
+    "topic": "Heaps",
+    "title": "Merge K Sorted Arrays",
+    "link": "https://learning.ccbp.in/question/7eea8e71-5f06-4bf3-964d-d00d2ae4d9f1",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q170",
+    "order": 170,
+    "topic": "Heaps",
+    "title": "Top K Frequent Elements",
+    "link": "https://learning.ccbp.in/question/b1ea5a8c-40e1-461e-9dfd-ef7098145cd9",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q171",
+    "order": 171,
+    "topic": "Heaps",
+    "title": "Minimum Cost to Join Rods",
+    "link": "https://learning.ccbp.in/question/a0c83a8b-64a3-4830-8e75-871c1662732c",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q172",
+    "order": 172,
+    "topic": "Graphs",
+    "title": "Graphs",
+    "link": "",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q173",
+    "order": 173,
+    "topic": "Graphs",
+    "title": "BFS Traversal",
+    "link": "https://learning.ccbp.in/question/fd9b8d4b-5a87-43c7-919e-55da0101ceb6",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q174",
+    "order": 174,
+    "topic": "Graphs",
+    "title": "DFS Traversal",
+    "link": "https://learning.ccbp.in/question/57dd3fd2-4c88-4591-a596-d368920954e7",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q175",
+    "order": 175,
+    "topic": "Graphs",
+    "title": "Number of Components",
+    "link": "https://learning.ccbp.in/question/c1d87c9f-1852-485b-8817-e118cc07700e",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q176",
+    "order": 176,
+    "topic": "Graphs",
+    "title": "Rotten Oranges",
+    "link": "https://learning.ccbp.in/question/621be9d9-e8e2-4805-a71d-1d38ea5d2b75",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q177",
+    "order": 177,
+    "topic": "Graphs",
+    "title": "Detect Cycle in an Undirected Graph Using BFS",
+    "link": "https://learning.ccbp.in/question/e3b14806-5951-41af-add5-f7c0e49fa744",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q178",
+    "order": 178,
+    "topic": "Graphs",
+    "title": "Detect Cycle in Directed Graph",
+    "link": "https://learning.ccbp.in/question/e3b14806-5951-41af-add5-f7c0e49fa744",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q179",
+    "order": 179,
+    "topic": "Graphs",
+    "title": "Flood Fill Algorithm",
+    "link": "https://learning.ccbp.in/question/c89278e8-a6e1-4943-b6dc-f95844fa13a5",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q180",
+    "order": 180,
+    "topic": "Graphs",
+    "title": "Number of Islands",
+    "link": "https://learning.ccbp.in/question/b3c111d5-abb5-4580-bf49-ab3cbd3e000f",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q181",
+    "order": 181,
+    "topic": "Graphs",
+    "title": "Topological Sort",
+    "link": "https://learning.ccbp.in/question/7735453d-6b48-40d1-8a46-d62003f96416",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q182",
+    "order": 182,
+    "topic": "Graphs",
+    "title": "Kahn's Algorithm",
+    "link": "https://learning.ccbp.in/question/9fa981a2-61aa-411c-a0ba-ed8067638b99",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q183",
+    "order": 183,
+    "topic": "Graphs",
+    "title": "Bipartite Graph Check",
+    "link": "https://learning.ccbp.in/question/a2bfc1ed-1e85-44b8-bc6b-9f2ebb3b4d8a",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q184",
+    "order": 184,
+    "topic": "Graphs",
+    "title": "Shortest Path in Undirected Graph",
+    "link": "https://learning.ccbp.in/question/d76df67b-90b6-456c-bb59-8122fcb15811",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q185",
+    "order": 185,
+    "topic": "Graphs",
+    "title": "Shortest Path in DAG",
+    "link": "https://learning.ccbp.in/question/c8aa3396-7370-4348-9545-7b44748cab5c",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q186",
+    "order": 186,
+    "topic": "Graphs",
+    "title": "Dijkstra's Algorithm",
+    "link": "https://learning.ccbp.in/question/4886f851-5a06-4621-8618-c840cf354b41",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q187",
+    "order": 187,
+    "topic": "Graphs",
+    "title": "Shortest Distance in Grid",
+    "link": "https://learning.ccbp.in/question/6d490afa-17d7-4fb2-9594-8820aedc8c67",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q188",
+    "order": 188,
+    "topic": "Graphs",
+    "title": "Minimum Effort Path",
+    "link": "https://learning.ccbp.in/question/f20e6d17-16b6-47aa-9411-77ff213987df",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q189",
+    "order": 189,
+    "topic": "Graphs",
+    "title": "Cheapest Flight Within K Stops",
+    "link": "https://learning.ccbp.in/question/b23a70ce-1e7c-4dd3-bc40-869377a3b756",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q190",
+    "order": 190,
+    "topic": "Graphs",
+    "title": "Number of Ways to Arrive at Destination",
+    "link": "https://learning.ccbp.in/question/f8fd2c05-432c-4d82-9d47-4d397ac181e8",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q191",
+    "order": 191,
+    "topic": "Graphs",
+    "title": "Minimum Steps to Reach a Target",
+    "link": "https://learning.ccbp.in/question/0082732f-c356-4bc1-a00a-3727e10f0875",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q192",
+    "order": 192,
+    "topic": "Graphs",
+    "title": "Bellman-Ford Algorithm",
+    "link": "https://learning.ccbp.in/question/85f9bb15-c209-4faf-9805-72f62b99ee75",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q193",
+    "order": 193,
+    "topic": "Graphs",
+    "title": "Floyd Warshall Algorithm",
+    "link": "https://learning.ccbp.in/question/ab9ced00-30e0-45af-8c0d-6e4fef90c9a3",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q194",
+    "order": 194,
+    "topic": "Graphs",
+    "title": "City With Least Neighbors",
+    "link": "https://learning.ccbp.in/question/f09e86d3-a72d-4a30-8c74-293bc8e15414",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q195",
+    "order": 195,
+    "topic": "Graphs",
+    "title": "Articulation Points",
+    "link": "https://learning.ccbp.in/question/6c1735f0-c355-41d8-8f8e-2f1b77c8dbc6",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q196",
+    "order": 196,
+    "topic": "Graphs",
+    "title": "Disjoint sets union",
+    "link": "",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q197",
+    "order": 197,
+    "topic": "Graphs",
+    "title": "Krushals algorithm",
+    "link": "",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q198",
+    "order": 198,
+    "topic": "Graphs",
+    "title": "Merge user profiles",
+    "link": "",
+    "difficulty": "UNRATED"
+  },
+  {
+    "id": "q199",
+    "order": 199,
+    "topic": "dynamic programming",
+    "title": "Fireball Impact Duration",
+    "link": "",
+    "difficulty": "UNRATED"
+  }
+]
