@@ -127,6 +127,13 @@ export default function TrackerApp() {
   const [solved, setSolved] = useState([]);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
+  const [todayCount, setTodayCount] = useState(0);
+  const [dailyGoal, setDailyGoal] = useState(8);
+  const [todayPct, setTodayPct] = useState(0);
+  const [todayComplete, setTodayComplete] = useState(false);
+  const [challengeCompleted, setChallengeCompleted] = useState(0);
+  const [challengeDays, setChallengeDays] = useState(30);
+  const [challengePct, setChallengePct] = useState(0);
   const [board, setBoard] = useState(null);
   const [search, setSearch] = useState('');
   const [topic, setTopic] = useState('all');
@@ -139,6 +146,19 @@ export default function TrackerApp() {
   const seenToastIds = useRef(new Set());
 
   const solvedSet = useMemo(() => new Set(solved), [solved]);
+
+  function applyProgress(progress) {
+    setSolved(progress.solved || []);
+    setCurrentStreak(progress.currentStreak || 0);
+    setBestStreak(progress.bestStreak || 0);
+    setTodayCount(progress.todayRawCount ?? progress.todayCount ?? 0);
+    setDailyGoal(progress.dailyGoal || 8);
+    setTodayPct(progress.todayPct || 0);
+    setTodayComplete(!!progress.todayComplete);
+    setChallengeCompleted(progress.challengeCompleted || 0);
+    setChallengeDays(progress.challengeDays || 30);
+    setChallengePct(progress.challengePct || 0);
+  }
 
   const loadBoard = useCallback(async () => {
     const data = await api('/api/leaderboard');
@@ -161,9 +181,7 @@ export default function TrackerApp() {
       api('/api/activity'),
     ]);
     setQuestions(qs.questions);
-    setSolved(progress.solved);
-    setCurrentStreak(progress.currentStreak);
-    setBestStreak(progress.bestStreak);
+    applyProgress(progress);
     setFeed(act.activities || []);
     sinceRef.current = act.serverTime || new Date().toISOString();
     for (const a of act.activities || []) seenToastIds.current.add(a.id);
@@ -259,11 +277,10 @@ export default function TrackerApp() {
         method: 'POST',
         body: JSON.stringify({ qid }),
       });
-      setSolved(data.solved);
-      setCurrentStreak(data.currentStreak);
-      setBestStreak(data.bestStreak);
+      applyProgress(data);
       loadBoard();
-      if (data.action === 'finished') toast.success('Marked as finished');
+      if (data.toastHint) toast.success(data.toastHint);
+      else if (data.action === 'finished') toast.success('Marked as finished');
       else if (data.action === 'reopened') toast.info('Marked as todo again');
     } catch (err) {
       toast.error(err.message);
@@ -389,6 +406,46 @@ export default function TrackerApp() {
       </header>
 
       <main className="mx-auto w-[min(1100px,calc(100%-2rem))] py-6 pb-12">
+        <section className="mb-4 rounded-[18px] border border-[var(--line)] bg-white p-4 shadow-[var(--shadow)] animate-rise">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="m-0 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-[var(--accent)]">
+                30-day challenge
+              </p>
+              <h2 className="mt-1 mb-0 text-xl font-bold tracking-tight">8 questions every day</h2>
+              <p className="mt-1 mb-0 text-sm text-[var(--muted)]">
+                A streak day counts only after you finish {dailyGoal} questions today.
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="m-0 text-2xl font-bold tabular-nums">
+                {Math.min(todayCount, dailyGoal)}/{dailyGoal}
+              </p>
+              <p className="m-0 text-xs font-semibold uppercase tracking-[0.05em] text-[var(--muted)]">
+                {todayComplete ? 'Daily goal complete' : 'Today toward streak'}
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 h-3 overflow-hidden rounded-full bg-[#e4ece8]">
+            <div
+              className={`h-full rounded-full transition-all ${todayComplete ? 'bg-[var(--accent)]' : 'bg-[#1d5f8a]'}`}
+              style={{ width: `${todayPct}%` }}
+            />
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+            <p className="m-0 text-sm text-[var(--muted)]">
+              Challenge days completed:{' '}
+              <strong className="text-[var(--ink)]">
+                {challengeCompleted}/{challengeDays}
+              </strong>
+            </p>
+            <p className="m-0 font-mono text-xs text-[var(--muted)]">{challengePct}%</p>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#e4ece8]">
+            <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: `${challengePct}%` }} />
+          </div>
+        </section>
+
         <section className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
           <article className="rounded-[14px] border border-[var(--line)] bg-white p-4 animate-rise">
             <p className="text-[0.78rem] font-semibold uppercase tracking-[0.06em] text-[var(--muted)]">Solved</p>
@@ -398,7 +455,7 @@ export default function TrackerApp() {
           <article className="rounded-[14px] border border-transparent bg-gradient-to-br from-[#0f7a4f] to-[#149463] p-4 text-white animate-rise">
             <p className="text-[0.78rem] font-semibold uppercase tracking-[0.06em] text-white/80">Current streak</p>
             <p className="mt-1 text-3xl font-bold tracking-tight tabular-nums">{currentStreak}</p>
-            <p className="text-sm text-white/80">days</p>
+            <p className="text-sm text-white/80">days @ {dailyGoal}/day</p>
           </article>
           <article className="rounded-[14px] border border-[var(--line)] bg-white p-4 animate-rise">
             <p className="text-[0.78rem] font-semibold uppercase tracking-[0.06em] text-[var(--muted)]">Best streak</p>
@@ -406,7 +463,7 @@ export default function TrackerApp() {
             <p className="text-sm text-[var(--muted)]">days</p>
           </article>
           <article className="rounded-[14px] border border-[var(--line)] bg-white p-4 animate-rise">
-            <p className="text-[0.78rem] font-semibold uppercase tracking-[0.06em] text-[var(--muted)]">Progress</p>
+            <p className="text-[0.78rem] font-semibold uppercase tracking-[0.06em] text-[var(--muted)]">Sheet progress</p>
             <p className="mt-1 text-3xl font-bold tracking-tight tabular-nums">{pct}%</p>
             <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-[#e4ece8]">
               <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: `${pct}%` }} />
@@ -603,26 +660,30 @@ export default function TrackerApp() {
                   )}
                   <p className="m-0 font-mono text-sm text-[var(--muted)]">#{i + 1}</p>
                   <h3 className="m-0 text-2xl font-bold capitalize tracking-tight">{row.displayName}</h3>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[0.72rem] font-semibold uppercase tracking-[0.05em] text-[var(--muted)]">Solved</label>
-                      <strong className="text-xl tabular-nums">
-                        {row.solvedCount}/{board.totalQuestions}
-                      </strong>
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[0.72rem] font-semibold uppercase tracking-[0.05em] text-[var(--muted)]">Solved</label>
+                        <strong className="text-xl tabular-nums">
+                          {row.solvedCount}/{board.totalQuestions}
+                        </strong>
+                      </div>
+                      <div>
+                        <label className="block text-[0.72rem] font-semibold uppercase tracking-[0.05em] text-[var(--muted)]">Streak</label>
+                        <strong className="text-xl tabular-nums">{row.currentStreak}d</strong>
+                      </div>
+                      <div>
+                        <label className="block text-[0.72rem] font-semibold uppercase tracking-[0.05em] text-[var(--muted)]">Today</label>
+                        <strong className="text-xl tabular-nums">
+                          {row.todayCount}/{row.dailyGoal}
+                        </strong>
+                      </div>
+                      <div>
+                        <label className="block text-[0.72rem] font-semibold uppercase tracking-[0.05em] text-[var(--muted)]">Challenge</label>
+                        <strong className="text-xl tabular-nums">
+                          {row.challengeCompleted}/{row.challengeDays}
+                        </strong>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-[0.72rem] font-semibold uppercase tracking-[0.05em] text-[var(--muted)]">Streak</label>
-                      <strong className="text-xl tabular-nums">{row.currentStreak}d</strong>
-                    </div>
-                    <div>
-                      <label className="block text-[0.72rem] font-semibold uppercase tracking-[0.05em] text-[var(--muted)]">Best</label>
-                      <strong className="text-xl tabular-nums">{row.bestStreak}d</strong>
-                    </div>
-                    <div>
-                      <label className="block text-[0.72rem] font-semibold uppercase tracking-[0.05em] text-[var(--muted)]">Done</label>
-                      <strong className="text-xl tabular-nums">{row.pct}%</strong>
-                    </div>
-                  </div>
                   <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#e4ece8]">
                     <div className="h-full bg-[var(--accent)] transition-all" style={{ width: `${row.pct}%` }} />
                   </div>

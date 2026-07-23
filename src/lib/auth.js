@@ -2,20 +2,17 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import User from './models/User.js';
-import { computeStreaks } from './streak.js';
+import { progressPayload } from './streak.js';
 
 export const AUTH_COOKIE = 'dsa_token';
 
 export function publicUser(user) {
-  const { currentStreak, bestStreak } = computeStreaks(user.activityDates || []);
+  const progress = progressPayload(user);
   return {
     id: String(user._id),
     username: user.username,
     displayName: user.displayName,
-    solved: user.solved || [],
-    solvedCount: (user.solved || []).length,
-    currentStreak,
-    bestStreak,
+    ...progress,
   };
 }
 

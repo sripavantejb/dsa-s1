@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { ensureSeeded } from '@/lib/seed';
 import { getAuthUser } from '@/lib/auth';
-import { computeStreaks, ensureToday } from '@/lib/streak';
+import { DAILY_GOAL, progressPayload, recordFinish, recordReopen } from '@/lib/streak';
 import Question from '@/lib/models/Question.js';
 import Activity from '@/lib/models/Activity.js';
 
@@ -13,13 +13,7 @@ export async function GET() {
     const user = await getAuthUser();
     if (!user) return NextResponse.json({ message: 'Login required' }, { status: 401 });
 
-    const { currentStreak, bestStreak } = computeStreaks(user.activityDates);
-    return NextResponse.json({
-      solved: user.solved,
-      solvedCount: user.solved.length,
-      currentStreak,
-      bestStreak,
-    });
+    return NextResponse.json(progressPayload(user));
   } catch (err) {
     console.error(err);
     return NextResponse.json({ message: 'Failed' }, { status: 500 });
@@ -43,10 +37,11 @@ export async function POST(req) {
     let action;
     if (idx >= 0) {
       user.solved.splice(idx, 1);
+      recordReopen(user, qid);
       action = 'reopened';
     } else {
       user.solved.push(qid);
-      user.activityDates = ensureToday(user.activityDates);
+      recordFinish(user, qid);
       action = 'finished';
     }
     await user.save();
@@ -60,13 +55,20 @@ export async function POST(req) {
       action,
     });
 
-    const { currentStreak, bestStreak } = computeStreaks(user.activityDates);
+    const progress = progressPayload(user);
+    let toastHint = null;
+    if (action === 'finished') {
+      if (progress.todayComplete && progress.todayRawCount === DAILY_GOAL) {
+        toastHint = `Daily goal hit! ${DAILY_GOAL}/8 done — streak day counted.`;
+      } else if (!progress.todayComplete) {
+        toastHint = `Today ${progress.todayRawCount}/${DAILY_GOAL} toward streak`;
+      }
+    }
+
     return NextResponse.json({
-      solved: user.solved,
-      solvedCount: user.solved.length,
-      currentStreak,
-      bestStreak,
+      ...progress,
       action,
+      toastHint,
     });
   } catch (err) {
     console.error(err);

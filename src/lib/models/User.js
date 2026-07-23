@@ -6,6 +6,8 @@ const UserSchema = new mongoose.Schema(
     displayName: { type: String, required: true },
     passwordHash: { type: String, required: true },
     solved: [{ type: String }],
+    /** date (YYYY-MM-DD) -> qids finished that day — streak needs 8/day */
+    dailySolves: { type: mongoose.Schema.Types.Mixed, default: {} },
     activityDates: [{ type: String }],
   },
   { timestamps: true }

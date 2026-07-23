@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { ensureSeeded } from '@/lib/seed';
 import { getAuthUser } from '@/lib/auth';
-import { computeStreaks } from '@/lib/streak';
+import { challengeProgress, computeStreaks, dailyProgress } from '@/lib/streak';
 import Question from '@/lib/models/Question.js';
 import User from '@/lib/models/User.js';
 
@@ -23,7 +23,9 @@ export async function GET() {
 
     const board = users
       .map((u) => {
-        const { currentStreak, bestStreak } = computeStreaks(u.activityDates || []);
+        const { currentStreak, bestStreak } = computeStreaks(u.dailySolves || {});
+        const daily = dailyProgress(u.dailySolves || {});
+        const challenge = challengeProgress(u.dailySolves || {});
         const byTopic = Object.fromEntries(topics.map((t) => [t, 0]));
         for (const id of u.solved || []) {
           const t = topicOf[id];
@@ -35,6 +37,11 @@ export async function GET() {
           solvedCount: (u.solved || []).length,
           currentStreak,
           bestStreak,
+          todayCount: daily.todayRawCount,
+          dailyGoal: daily.dailyGoal,
+          todayComplete: daily.todayComplete,
+          challengeCompleted: challenge.challengeCompleted,
+          challengeDays: challenge.challengeDays,
           pct: totalQuestions ? Math.round(((u.solved || []).length / totalQuestions) * 100) : 0,
           byTopic,
         };
