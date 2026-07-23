@@ -2,7 +2,14 @@ import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { ensureSeeded } from '@/lib/seed';
 import User from '@/lib/models/User.js';
-import { publicUser, setAuthCookie, signToken, verifyPassword } from '@/lib/auth';
+import {
+  AUTH_COOKIE,
+  apiError,
+  cookieOptions,
+  publicUser,
+  signToken,
+  verifyPassword,
+} from '@/lib/auth';
 
 export async function POST(req) {
   try {
@@ -19,10 +26,10 @@ export async function POST(req) {
     }
 
     const token = signToken(user);
-    await setAuthCookie(token);
-    return NextResponse.json({ user: publicUser(user) });
+    const res = NextResponse.json({ user: publicUser(user) });
+    res.cookies.set(AUTH_COOKIE, token, cookieOptions());
+    return res;
   } catch (err) {
-    console.error(err);
-    return NextResponse.json({ message: 'Login failed' }, { status: 500 });
+    return NextResponse.json(apiError(err, 'Login failed'), { status: 500 });
   }
 }

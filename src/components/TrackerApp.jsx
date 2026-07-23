@@ -62,7 +62,7 @@ function Login({ onLogin }) {
       });
       onLogin(data.user);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Login failed');
     } finally {
       setLoading(false);
     }

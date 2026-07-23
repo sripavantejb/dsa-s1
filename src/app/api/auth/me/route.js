@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { ensureSeeded } from '@/lib/seed';
-import { clearAuthCookie, getAuthUser, publicUser } from '@/lib/auth';
+import { AUTH_COOKIE, apiError, clearAuthCookie, getAuthUser, publicUser } from '@/lib/auth';
 
 export async function GET() {
   try {
@@ -11,12 +11,17 @@ export async function GET() {
     if (!user) return NextResponse.json({ user: null }, { status: 401 });
     return NextResponse.json({ user: publicUser(user) });
   } catch (err) {
-    console.error(err);
-    return NextResponse.json({ message: 'Failed' }, { status: 500 });
+    return NextResponse.json(apiError(err, 'Failed'), { status: 500 });
   }
 }
 
 export async function DELETE() {
-  await clearAuthCookie();
-  return NextResponse.json({ ok: true });
+  const res = NextResponse.json({ ok: true });
+  res.cookies.set(AUTH_COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 });
+  try {
+    await clearAuthCookie();
+  } catch {
+    /* response cookie is enough */
+  }
+  return res;
 }
