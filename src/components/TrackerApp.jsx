@@ -207,12 +207,34 @@ export default function TrackerApp() {
   useEffect(() => {
     if (!user) return undefined;
 
+    let lastBeat = Date.now();
+
+    const isFocused = () =>
+      typeof document !== 'undefined' &&
+      document.visibilityState === 'visible' &&
+      document.hasFocus();
+
     const beat = () => {
-      api('/api/presence', { method: 'POST' }).catch(() => {});
+      const now = Date.now();
+      const deltaSeconds = Math.min(20, Math.max(0, Math.round((now - lastBeat) / 1000)));
+      lastBeat = now;
+      api('/api/presence', {
+        method: 'POST',
+        body: JSON.stringify({ focused: isFocused(), deltaSeconds }),
+      })
+        .then(() => loadPresence())
+        .catch(() => {});
     };
+
     beat();
     const presenceTimer = setInterval(beat, 15000);
     const presenceRefresh = setInterval(loadPresence, 10000);
+
+    const onVis = () => {
+      if (document.visibilityState === 'visible') beat();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('focus', beat);
 
     const poll = async () => {
       try {
@@ -245,8 +267,16 @@ export default function TrackerApp() {
       clearInterval(presenceTimer);
       clearInterval(presenceRefresh);
       clearInterval(activityTimer);
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('focus', beat);
     };
   }, [user, loadBoard, loadPresence]);
+
+  function statusMeta(status) {
+    if (status === 'active') return { label: 'Active', className: 'bg-[var(--accent-soft)] text-[var(--accent)]', dot: 'bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.25)]' };
+    if (status === 'idle') return { label: 'Idle', className: 'bg-[#fef3c7] text-[var(--medium)]', dot: 'bg-amber-400' };
+    return { label: 'Offline', className: 'bg-[#eef0f2] text-[var(--muted)]', dot: 'bg-slate-300' };
+  }
 
   async function handleLogin(u) {
     setUser(u);
@@ -382,17 +412,21 @@ export default function TrackerApp() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            {people.map((p) => (
-              <div
-                key={p.username}
-                className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-2.5 py-1 text-xs font-semibold"
-                title={p.online ? 'Active now' : 'Offline'}
-              >
-                <span className={`h-2 w-2 rounded-full ${p.online ? 'bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.25)]' : 'bg-slate-300'}`} />
-                <span className="capitalize">{p.displayName}</span>
-                {p.isYou && <span className="font-mono text-[0.65rem] text-[var(--muted)]">you</span>}
-              </div>
-            ))}
+            {people.map((p) => {
+              const meta = statusMeta(p.status || (p.online ? 'active' : 'offline'));
+              return (
+                <div
+                  key={p.username}
+                  className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-2.5 py-1 text-xs font-semibold"
+                  title={`${meta.label} · ${p.timeToday || '0s'} today`}
+                >
+                  <span className={`h-2 w-2 rounded-full ${meta.dot}`} />
+                  <span className="capitalize">{p.displayName}</span>
+                  <span className="font-mono text-[0.65rem] text-[var(--muted)]">{p.timeToday || '0s'}</span>
+                  {p.isYou && <span className="font-mono text-[0.65rem] text-[var(--muted)]">you</span>}
+                </div>
+              );
+            })}
           </div>
           <span className="font-mono text-sm font-medium">{user.displayName}</span>
           <button
@@ -588,25 +622,34 @@ export default function TrackerApp() {
           <section className="rounded-[18px] border border-[var(--line)] bg-white p-4 shadow-[var(--shadow)]">
             <h2 className="m-0 text-2xl font-bold tracking-tight">Live activity</h2>
             <p className="mb-5 mt-1.5 text-[var(--muted)]">
-              See when Tej or Hafsa attempt or finish a question. Toasts also pop for the other person in real time.
+              Active / idle / offline status plus time spent with the tab focused. Toasts pop when the other person attempts or finishes a question.
             </p>
 
             <div className="mb-6 grid gap-3 sm:grid-cols-2">
-              {people.map((p) => (
-                <div key={p.username} className="flex items-center justify-between rounded-xl border border-[var(--line)] bg-[#fbfdfc] px-4 py-3">
-                  <div>
-                    <p className="m-0 text-lg font-bold capitalize">{p.displayName}</p>
-                    <p className="m-0 text-sm text-[var(--muted)]">{p.isYou ? 'That’s you' : 'Partner'}</p>
+              {people.map((p) => {
+                const meta = statusMeta(p.status || (p.online ? 'active' : 'offline'));
+                return (
+                  <div key={p.username} className="rounded-xl border border-[var(--line)] bg-[#fbfdfc] px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="m-0 text-lg font-bold capitalize">{p.displayName}</p>
+                        <p className="m-0 text-sm text-[var(--muted)]">{p.isYou ? 'That’s you' : 'Partner'}</p>
+                      </div>
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${meta.className}`}>{meta.label}</span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 border-t border-[var(--line)] pt-3">
+                      <div>
+                        <p className="m-0 text-[0.68rem] font-semibold uppercase tracking-[0.05em] text-[var(--muted)]">Time today</p>
+                        <p className="m-0 font-mono text-sm font-semibold tabular-nums">{p.timeToday || '0s'}</p>
+                      </div>
+                      <div>
+                        <p className="m-0 text-[0.68rem] font-semibold uppercase tracking-[0.05em] text-[var(--muted)]">All time</p>
+                        <p className="m-0 font-mono text-sm font-semibold tabular-nums">{p.timeTotal || '0s'}</p>
+                      </div>
+                    </div>
                   </div>
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                      p.online ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'bg-[#eef0f2] text-[var(--muted)]'
-                    }`}
-                  >
-                    {p.online ? 'Active now' : 'Offline'}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <h3 className="mb-3 mt-0 text-lg font-semibold">Recent events</h3>
