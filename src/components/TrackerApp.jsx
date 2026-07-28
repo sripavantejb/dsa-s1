@@ -255,6 +255,7 @@ export default function TrackerApp() {
   const seenCodeIds = useRef(new Set());
   const seenNotifIds = useRef(new Set());
   const chatEndRef = useRef(null);
+  const chatScrollRef = useRef(null);
   const tabRef = useRef(tab);
   const notifPanelRef = useRef(null);
 
@@ -279,10 +280,12 @@ export default function TrackerApp() {
   const solvedSet = useMemo(() => new Set(solved), [solved]);
 
   useEffect(() => {
-    if (tab === 'chat') {
-      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (tab !== 'chat') return;
+    const box = chatScrollRef.current;
+    if (box) {
+      box.scrollTop = box.scrollHeight;
     }
-  }, [messages, tab]);
+  }, [messages, partnerTyping, tab]);
 
   useEffect(() => {
     if (!notifOpen) return undefined;
@@ -859,7 +862,7 @@ export default function TrackerApp() {
   if (!user) return <Login onLogin={handleLogin} />;
 
   return (
-    <div className="min-h-screen">
+    <div className={tab === 'chat' ? 'h-dvh overflow-hidden' : 'min-h-screen'}>
       <ToastContainer
         position="top-right"
         autoClose={4500}
@@ -1007,7 +1010,15 @@ export default function TrackerApp() {
         </div>
       </header>
 
-      <main className="mx-auto w-[min(1100px,calc(100%-2rem))] py-6 pb-12">
+      <main
+        className={
+          tab === 'chat'
+            ? 'mx-auto flex h-[calc(100dvh-4.25rem)] w-[min(920px,calc(100%-1rem))] min-h-0 flex-col py-2 sm:w-[min(920px,calc(100%-2rem))]'
+            : 'mx-auto w-[min(1100px,calc(100%-2rem))] py-6 pb-12'
+        }
+      >
+        {tab !== 'chat' && (
+          <>
         <section className="mb-4 rounded-[18px] border border-[var(--line)] bg-white p-4 shadow-[var(--shadow)] animate-rise">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
@@ -1072,6 +1083,8 @@ export default function TrackerApp() {
             </div>
           </article>
         </section>
+          </>
+        )}
 
         {tab === 'sheet' && (
           <section className="rounded-[18px] border border-[var(--line)] bg-white p-4 shadow-[var(--shadow)]">
@@ -1267,8 +1280,8 @@ export default function TrackerApp() {
         )}
 
         {tab === 'chat' && (
-          <section className="flex min-h-[70vh] flex-col overflow-hidden rounded-[18px] border border-[var(--line)] bg-white shadow-[var(--shadow)]">
-            <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3">
+          <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[18px] border border-[var(--line)] bg-white shadow-[var(--shadow)]">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--line)] bg-white px-4 py-3">
               <div className="flex min-w-0 items-center gap-3">
                 {(() => {
                   const partner = people.find((p) => !p.isYou) || {
@@ -1347,7 +1360,10 @@ export default function TrackerApp() {
                 )}
               </div>
             </div>
-            <div className="flex-1 space-y-3 overflow-y-auto bg-[linear-gradient(180deg,#f7faf8_0%,#eef4f0_100%)] px-4 py-4">
+            <div
+              ref={chatScrollRef}
+              className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-[linear-gradient(180deg,#f7faf8_0%,#eef4f0_100%)] px-4 py-4"
+            >
               {messages.length === 0 && (
                 <p className="py-12 text-center text-[var(--muted)]">No messages yet. Say hi and start the grind talk.</p>
               )}
@@ -1463,8 +1479,8 @@ export default function TrackerApp() {
               <div ref={chatEndRef} />
             </div>
             {replyTo && (
-              <div className="flex items-center justify-between border-t border-[var(--line)] bg-[#f1faf5] px-3 py-2 text-sm">
-                <div>
+              <div className="flex shrink-0 items-center justify-between border-t border-[var(--line)] bg-[#f1faf5] px-3 py-2 text-sm">
+                <div className="min-w-0">
                   <p className="m-0 font-semibold text-[var(--accent)]">Replying to {replyTo.displayName}</p>
                   <p className="m-0 truncate text-[var(--muted)]">{replyTo.text}</p>
                 </div>
@@ -1473,7 +1489,7 @@ export default function TrackerApp() {
                 </button>
               </div>
             )}
-            <form onSubmit={sendChat} className="flex gap-2 border-t border-[var(--line)] p-3">
+            <form onSubmit={sendChat} className="flex shrink-0 gap-2 border-t border-[var(--line)] bg-white p-3">
               <SnapAvatar username={user.username} size={36} className="mt-0.5" />
               <input
                 value={chatDraft}
