@@ -429,6 +429,8 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
 
   useEffect(() => () => cleanupMedia(), [cleanupMedia]);
 
+  const inCall = !!(call && LIVE.has(call.status));
+
   useEffect(() => {
     if (!call || !mounted || !inCall) return;
     // Portal just mounted — rebind media elements
@@ -533,7 +535,6 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
     (call ? (call.callerUsername === user.username ? call.calleeUsername : call.callerUsername) : '');
   const iAmCaller = call?.callerUsername === user.username;
   const incoming = call?.status === 'ringing' && !iAmCaller;
-  const inCall = call && LIVE.has(call.status);
   const isVideo = call?.mode === 'video';
 
   const statusLabel = incoming
