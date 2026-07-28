@@ -85,6 +85,41 @@ function ReadTicks({ seen }) {
   );
 }
 
+function lastSeenLabel(iso) {
+  if (!iso) return 'last seen a while ago';
+  const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (s < 45) return 'last seen just now';
+  if (s < 3600) return `last seen ${Math.floor(s / 60) || 1}m ago`;
+  if (s < 86400) return `last seen ${Math.floor(s / 3600)}h ago`;
+  return `last seen ${Math.floor(s / 86400)}d ago`;
+}
+
+function ChatToggle({ label, hint, checked, onChange }) {
+  return (
+    <div className="mb-2 flex items-start justify-between gap-3 rounded-lg border border-[var(--line)] bg-[#fbfdfc] px-3 py-2.5">
+      <span>
+        <span className="block text-sm font-semibold text-[var(--ink)]">{label}</span>
+        {hint && <span className="mt-0.5 block text-xs text-[var(--muted)]">{hint}</span>}
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors ${
+          checked ? 'bg-[var(--accent)]' : 'bg-slate-300'
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+            checked ? 'translate-x-5' : ''
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
 function Login({ onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -188,9 +223,14 @@ export default function TrackerApp() {
   const [unreadChat, setUnreadChat] = useState(0);
   const [replyTo, setReplyTo] = useState(null);
   const [reactMenuId, setReactMenuId] = useState(null);
-  const [chatSettings, setChatSettings] = useState({ disappearingOnSeen: false });
+  const [chatSettings, setChatSettings] = useState({
+    disappearingOnSeen: false,
+    typingIndicators: true,
+    readReceipts: true,
+  });
   const [chatSettingsOpen, setChatSettingsOpen] = useState(false);
   const [clearingChat, setClearingChat] = useState(false);
+  const [partnerTyping, setPartnerTyping] = useState(false);
   const chatDraftRef = useRef('');
   const typingClearRef = useRef(null);
   const chatSettingsRef = useRef(null);
@@ -226,6 +266,7 @@ export default function TrackerApp() {
         .then((data) => {
           setMessages(data.messages || []);
           if (data.settings) setChatSettings(data.settings);
+          if (typeof data.partnerTyping === 'boolean') setPartnerTyping(data.partnerTyping);
           if (data.serverTime) chatSinceRef.current = data.serverTime;
         })
         .catch(() => {});
@@ -352,9 +393,11 @@ export default function TrackerApp() {
       lastBeat = now;
       const typing =
         tabRef.current === 'chat' && chatDraftRef.current.trim().length > 0 && isFocused();
+      const payload = { focused: isFocused(), deltaSeconds };
+      if (tabRef.current === 'chat') payload.typing = typing;
       api('/api/presence', {
         method: 'POST',
-        body: JSON.stringify({ focused: isFocused(), deltaSeconds, typing }),
+        body: JSON.stringify(payload),
       })
         .then(() => loadPresence())
         .catch(() => {});
@@ -362,7 +405,7 @@ export default function TrackerApp() {
 
     beat();
     const presenceTimer = setInterval(beat, 15000);
-    const presenceRefresh = setInterval(loadPresence, 10000);
+    const presenceRefresh = setInterval(loadPresence, 2000);
 
     const onVis = () => {
       if (document.visibilityState === 'visible') beat();
@@ -410,12 +453,13 @@ export default function TrackerApp() {
         }
         setMessages(list);
         if (data.settings) setChatSettings(data.settings);
+        if (typeof data.partnerTyping === 'boolean') setPartnerTyping(data.partnerTyping);
         if (data.serverTime) chatSinceRef.current = data.serverTime;
       } catch {
         /* ignore */
       }
     };
-    const chatTimer = setInterval(pollChat, 2500);
+    const chatTimer = setInterval(pollChat, 2000);
 
     const pollCode = async () => {
       try {
@@ -554,6 +598,7 @@ export default function TrackerApp() {
     const text = chatDraft.trim();
     if (!text || chatSending) return;
     setChatSending(true);
+    if (typingClearRef.current) clearTimeout(typingClearRef.current);
     try {
       const data = await api('/api/chat', {
         method: 'POST',
@@ -562,6 +607,10 @@ export default function TrackerApp() {
       setChatDraft('');
       chatDraftRef.current = '';
       setReplyTo(null);
+      api('/api/presence', {
+        method: 'POST',
+        body: JSON.stringify({ focused: true, deltaSeconds: 0, typing: false }),
+      }).catch(() => {});
       if (data.message) {
         seenChatIds.current.add(data.message.id);
         setMessages((prev) => {
@@ -569,6 +618,7 @@ export default function TrackerApp() {
           return [...prev, data.message];
         });
       }
+      if (data.settings) setChatSettings(data.settings);
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -591,17 +641,18 @@ export default function TrackerApp() {
     }
   }
 
-  async function toggleDisappearing(next) {
+  async function updateChatSetting(patch) {
     try {
       const data = await api('/api/chat', {
         method: 'PATCH',
-        body: JSON.stringify({ action: 'settings', disappearingOnSeen: next }),
+        body: JSON.stringify({ action: 'settings', ...patch }),
       });
       if (data.settings) setChatSettings(data.settings);
       const mark = tabRef.current === 'chat' ? '?markSeen=1' : '';
       const chat = await api(`/api/chat${mark}`);
       setMessages(chat.messages || []);
       if (chat.settings) setChatSettings(chat.settings);
+      if (typeof chat.partnerTyping === 'boolean') setPartnerTyping(chat.partnerTyping);
     } catch (err) {
       toast.error(err.message);
     }
@@ -627,6 +678,25 @@ export default function TrackerApp() {
     }
   }
 
+  async function deleteMessage(id) {
+    try {
+      await api(`/api/chat?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      setMessages((prev) => prev.filter((m) => m.id !== id));
+      setReactMenuId(null);
+    } catch (err) {
+      toast.error(err.message);
+    }
+  }
+
+  async function copyMessage(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Copied', { autoClose: 1200 });
+    } catch {
+      toast.error('Could not copy');
+    }
+  }
+
   function onChatDraftChange(value) {
     setChatDraft(value);
     chatDraftRef.current = value;
@@ -636,13 +706,33 @@ export default function TrackerApp() {
         method: 'POST',
         body: JSON.stringify({ focused: true, deltaSeconds: 0, typing: true }),
       }).catch(() => {});
+      // Keep typing alive while still composing
       typingClearRef.current = setTimeout(() => {
-        chatDraftRef.current = chatDraftRef.current;
-        api('/api/presence', {
-          method: 'POST',
-          body: JSON.stringify({ focused: true, deltaSeconds: 0, typing: false }),
-        }).catch(() => {});
-      }, 2000);
+        if (chatDraftRef.current.trim()) {
+          api('/api/presence', {
+            method: 'POST',
+            body: JSON.stringify({ focused: true, deltaSeconds: 0, typing: true }),
+          }).catch(() => {});
+          typingClearRef.current = setTimeout(() => {
+            if (!chatDraftRef.current.trim()) {
+              api('/api/presence', {
+                method: 'POST',
+                body: JSON.stringify({ focused: true, deltaSeconds: 0, typing: false }),
+              }).catch(() => {});
+            }
+          }, 4000);
+        } else {
+          api('/api/presence', {
+            method: 'POST',
+            body: JSON.stringify({ focused: true, deltaSeconds: 0, typing: false }),
+          }).catch(() => {});
+        }
+      }, 2500);
+    } else {
+      api('/api/presence', {
+        method: 'POST',
+        body: JSON.stringify({ focused: true, deltaSeconds: 0, typing: false }),
+      }).catch(() => {});
     }
   }
 
@@ -1181,8 +1271,15 @@ export default function TrackerApp() {
             <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3">
               <div className="flex min-w-0 items-center gap-3">
                 {(() => {
-                  const partner = people.find((p) => !p.isYou) || { username: user.username === 'tej' ? 'hafsa' : 'tej', displayName: user.username === 'tej' ? 'Hafsa' : 'Tej', typing: false, status: 'offline' };
+                  const partner = people.find((p) => !p.isYou) || {
+                    username: user.username === 'tej' ? 'hafsa' : 'tej',
+                    displayName: user.username === 'tej' ? 'Hafsa' : 'Tej',
+                    typing: false,
+                    status: 'offline',
+                    lastSeen: null,
+                  };
                   const meta = statusMeta(partner.status || 'offline');
+                  const showTyping = chatSettings.typingIndicators !== false && (partnerTyping || partner.typing);
                   return (
                     <>
                       <div className="relative">
@@ -1192,8 +1289,10 @@ export default function TrackerApp() {
                       <div className="min-w-0">
                         <h2 className="m-0 text-xl font-bold tracking-tight capitalize">{partner.displayName}</h2>
                         <p className="m-0 text-sm text-[var(--muted)]">
-                          {partner.typing ? (
+                          {showTyping ? (
                             <span className="typing-dots text-[var(--accent)] font-semibold">typing</span>
+                          ) : partner.status === 'offline' ? (
+                            lastSeenLabel(partner.lastSeen)
                           ) : (
                             meta.label
                           )}
@@ -1217,34 +1316,29 @@ export default function TrackerApp() {
                 {chatSettingsOpen && (
                   <div className="absolute right-0 top-full z-20 mt-2 w-72 rounded-xl border border-[var(--line)] bg-white p-3 shadow-[var(--shadow)]">
                     <p className="m-0 mb-3 text-xs font-semibold uppercase tracking-[0.06em] text-[var(--muted)]">Chat toggles</p>
-                    <div className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-[var(--line)] bg-[#fbfdfc] px-3 py-2.5">
-                      <span>
-                        <span className="block text-sm font-semibold text-[var(--ink)]">Disappearing on seen</span>
-                        <span className="mt-0.5 block text-xs text-[var(--muted)]">
-                          Messages vanish for both a few seconds after they’re read
-                        </span>
-                      </span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={chatSettings.disappearingOnSeen}
-                        onClick={() => toggleDisappearing(!chatSettings.disappearingOnSeen)}
-                        className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors ${
-                          chatSettings.disappearingOnSeen ? 'bg-[var(--accent)]' : 'bg-slate-300'
-                        }`}
-                      >
-                        <span
-                          className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                            chatSettings.disappearingOnSeen ? 'translate-x-5' : ''
-                          }`}
-                        />
-                      </button>
-                    </div>
+                    <ChatToggle
+                      label="Typing indicator"
+                      hint="Show when the other person is typing"
+                      checked={chatSettings.typingIndicators !== false}
+                      onChange={(v) => updateChatSetting({ typingIndicators: v })}
+                    />
+                    <ChatToggle
+                      label="Read receipts"
+                      hint="Blue ticks when messages are seen"
+                      checked={chatSettings.readReceipts !== false}
+                      onChange={(v) => updateChatSetting({ readReceipts: v })}
+                    />
+                    <ChatToggle
+                      label="Disappearing on seen"
+                      hint="Messages vanish a few seconds after they’re read"
+                      checked={!!chatSettings.disappearingOnSeen}
+                      onChange={(v) => updateChatSetting({ disappearingOnSeen: v })}
+                    />
                     <button
                       type="button"
                       onClick={clearChat}
                       disabled={clearingChat || messages.length === 0}
-                      className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                      className="mt-1 w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
                     >
                       {clearingChat ? 'Clearing…' : 'Clear chat'}
                     </button>
@@ -1288,7 +1382,7 @@ export default function TrackerApp() {
                             </span>
                           )}
                           <span>{timeAgo(m.createdAt)}</span>
-                          {mine && <ReadTicks seen={!!m.seen} />}
+                          {mine && chatSettings.readReceipts !== false && <ReadTicks seen={!!m.seen} />}
                         </p>
                       </div>
                       {reactionEntries.length > 0 && (
@@ -1322,6 +1416,22 @@ export default function TrackerApp() {
                         >
                           Reply
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => copyMessage(m.text)}
+                          className="rounded-full border border-[var(--line)] bg-white px-2 py-0.5 text-[0.65rem] font-semibold shadow"
+                        >
+                          Copy
+                        </button>
+                        {mine && (
+                          <button
+                            type="button"
+                            onClick={() => deleteMessage(m.id)}
+                            className="rounded-full border border-red-200 bg-white px-2 py-0.5 text-[0.65rem] font-semibold text-red-600 shadow"
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
                       {reactMenuId === m.id && (
                         <div className={`absolute z-10 mt-2 flex gap-1 rounded-full border border-[var(--line)] bg-white p-1 shadow ${mine ? 'right-0' : 'left-0'}`}>
@@ -1342,7 +1452,7 @@ export default function TrackerApp() {
                   </div>
                 );
               })}
-              {people.some((p) => !p.isYou && p.typing) && (
+              {chatSettings.typingIndicators !== false && (partnerTyping || people.some((p) => !p.isYou && p.typing)) && (
                 <div className="chat-bubble-in flex items-end gap-2">
                   <SnapAvatar username={people.find((p) => !p.isYou)?.username} size={32} />
                   <div className="rounded-2xl rounded-bl-md bg-white px-4 py-3 shadow-sm">

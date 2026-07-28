@@ -8,6 +8,7 @@ import User from '@/lib/models/User.js';
 
 const ONLINE_MS = 45_000;
 const ACTIVE_MS = 30_000;
+const TYPING_MS = 6_000;
 const MAX_DELTA = 20;
 
 function formatDuration(totalSeconds = 0) {
@@ -26,7 +27,7 @@ function personView(u, p, meUsername, now = Date.now()) {
   const typingAt = p?.typingAt ? new Date(p.typingAt).getTime() : 0;
   const online = lastSeen > 0 && now - lastSeen < ONLINE_MS;
   const focused = online && lastFocused > 0 && now - lastFocused < ACTIVE_MS;
-  const typing = online && typingAt > 0 && now - typingAt < 4000;
+  const typing = online && typingAt > 0 && now - typingAt < TYPING_MS;
   let status = 'offline';
   if (focused) status = 'active';
   else if (online) status = 'idle';
@@ -59,6 +60,7 @@ export async function POST(req) {
 
     const body = await req.json().catch(() => ({}));
     const focused = !!body.focused;
+    const hasTyping = Object.prototype.hasOwnProperty.call(body, 'typing');
     const typing = !!body.typing;
     const delta = Math.min(MAX_DELTA, Math.max(0, Number(body.deltaSeconds) || 0));
     const today = todayKey();
@@ -73,27 +75,34 @@ export async function POST(req) {
       secondsTotal += delta;
     }
 
-    const doc = await Presence.findOneAndUpdate(
-      { username: user.username },
-      {
-        username: user.username,
-        displayName: user.displayName,
-        lastSeen: now,
-        activeDate: today,
-        secondsToday,
-        secondsTotal,
-        ...(focused ? { lastFocusedAt: now } : {}),
-        ...(typing ? { typingAt: now } : { typingAt: null }),
-      },
-      { upsert: true, new: true }
-    );
+    const update = {
+      username: user.username,
+      displayName: user.displayName,
+      lastSeen: now,
+      activeDate: today,
+      secondsToday,
+      secondsTotal,
+      ...(focused ? { lastFocusedAt: now } : {}),
+    };
+
+    // Only touch typingAt when the client explicitly sends typing
+    if (hasTyping) {
+      update.typingAt = typing ? now : null;
+    }
+
+    const doc = await Presence.findOneAndUpdate({ username: user.username }, update, {
+      upsert: true,
+      new: true,
+    });
+
+    const typingActive = !!(doc.typingAt && now - new Date(doc.typingAt).getTime() < TYPING_MS);
 
     return NextResponse.json({
       ok: true,
       secondsToday: doc.secondsToday,
       timeToday: formatDuration(doc.secondsToday),
       status: focused ? 'active' : 'idle',
-      typing,
+      typing: typingActive,
     });
   } catch (err) {
     console.error(err);
