@@ -22,16 +22,12 @@ const CallSessionSchema = new mongoose.Schema(
       default: 'ringing',
       index: true,
     },
-    /** WebRTC media is DTLS-SRTP encrypted peer-to-peer */
     encryption: { type: String, default: 'dtls-srtp' },
-    offer: {
-      type: { type: String, default: '' },
-      sdp: { type: String, default: '' },
-    },
-    answer: {
-      type: { type: String, default: '' },
-      sdp: { type: String, default: '' },
-    },
+    // Flat fields avoid mongoose nested "type" quirks
+    offerType: { type: String, default: '' },
+    offerSdp: { type: String, default: '' },
+    answerType: { type: String, default: '' },
+    answerSdp: { type: String, default: '' },
     callerIce: { type: [IceSchema], default: [] },
     calleeIce: { type: [IceSchema], default: [] },
     endedAt: { type: Date, default: null },

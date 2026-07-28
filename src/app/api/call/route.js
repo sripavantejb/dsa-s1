@@ -10,6 +10,11 @@ const ACTIVE = new Set(['ringing', 'accepted', 'active']);
 
 function serialize(c) {
   if (!c) return null;
+  // Support both flat and legacy nested offer/answer shapes
+  const offerSdp = c.offerSdp || c.offer?.sdp || '';
+  const answerSdp = c.answerSdp || c.answer?.sdp || '';
+  const offerType = c.offerType || c.offer?.type || 'offer';
+  const answerType = c.answerType || c.answer?.type || 'answer';
   return {
     id: String(c._id),
     callerUsername: c.callerUsername,
@@ -20,8 +25,8 @@ function serialize(c) {
     status: c.status,
     encryption: c.encryption || 'dtls-srtp',
     e2e: true,
-    offer: c.offer?.sdp ? { type: c.offer.type, sdp: c.offer.sdp } : null,
-    answer: c.answer?.sdp ? { type: c.answer.type, sdp: c.answer.sdp } : null,
+    offer: offerSdp ? { type: offerType, sdp: offerSdp } : null,
+    answer: answerSdp ? { type: answerType, sdp: answerSdp } : null,
     callerIce: c.callerIce || [],
     calleeIce: c.calleeIce || [],
     createdAt: c.createdAt,
@@ -32,12 +37,11 @@ function serialize(c) {
 }
 
 async function partnerOf(username) {
-  const other = await User.findOne({ username: { $ne: username } }).select('username displayName').lean();
-  return other;
+  return User.findOne({ username: { $ne: username } }).select('username displayName').lean();
 }
 
 async function expireStale() {
-  const ringCutoff = new Date(Date.now() - 60_000);
+  const ringCutoff = new Date(Date.now() - 90_000);
   const activeCutoff = new Date(Date.now() - 3 * 60 * 60_000);
   await CallSession.updateMany(
     { status: 'ringing', createdAt: { $lt: ringCutoff } },
@@ -88,18 +92,20 @@ export async function POST(req) {
     if (!partner) return NextResponse.json({ message: 'No partner found' }, { status: 400 });
 
     await expireStale();
-    const existing = await CallSession.findOne({
-      status: { $in: [...ACTIVE] },
-      $or: [
-        { callerUsername: user.username },
-        { calleeUsername: user.username },
-        { callerUsername: partner.username },
-        { calleeUsername: partner.username },
-      ],
-    });
-    if (existing) {
-      return NextResponse.json({ message: 'A call is already in progress', call: serialize(existing) }, { status: 409 });
-    }
+
+    // Clear any stuck live calls for this pair so a fresh call can start
+    await CallSession.updateMany(
+      {
+        status: { $in: [...ACTIVE] },
+        $or: [
+          { callerUsername: user.username },
+          { calleeUsername: user.username },
+          { callerUsername: partner.username },
+          { calleeUsername: partner.username },
+        ],
+      },
+      { $set: { status: 'ended', endedAt: new Date(), endedBy: 'replaced' } }
+    );
 
     const call = await CallSession.create({
       callerUsername: user.username,
@@ -149,19 +155,34 @@ export async function PATCH(req) {
     if (action === 'offer') {
       if (!isCaller) return NextResponse.json({ message: 'Only caller can set offer' }, { status: 403 });
       if (!body.sdp) return NextResponse.json({ message: 'Missing SDP' }, { status: 400 });
-      call.offer = { type: body.type || 'offer', sdp: body.sdp };
-      if (call.status === 'ringing' || call.status === 'accepted') call.status = call.status;
-      await call.save();
-      return NextResponse.json({ call: serialize(call.toObject()) });
+      const updated = await CallSession.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            offerType: body.type || 'offer',
+            offerSdp: body.sdp,
+          },
+        },
+        { new: true }
+      ).lean();
+      return NextResponse.json({ call: serialize(updated) });
     }
 
     if (action === 'answer') {
       if (!isCallee) return NextResponse.json({ message: 'Only callee can set answer' }, { status: 403 });
       if (!body.sdp) return NextResponse.json({ message: 'Missing SDP' }, { status: 400 });
-      call.answer = { type: body.type || 'answer', sdp: body.sdp };
-      call.status = 'active';
-      await call.save();
-      return NextResponse.json({ call: serialize(call.toObject()) });
+      const updated = await CallSession.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            answerType: body.type || 'answer',
+            answerSdp: body.sdp,
+            status: 'active',
+          },
+        },
+        { new: true }
+      ).lean();
+      return NextResponse.json({ call: serialize(updated) });
     }
 
     if (action === 'ice') {
@@ -170,53 +191,56 @@ export async function PATCH(req) {
       const entry = {
         candidate: cand.candidate,
         sdpMid: cand.sdpMid ?? null,
-        sdpMLineIndex: cand.sdpMLineIndex ?? null,
+        sdpMLineIndex: typeof cand.sdpMLineIndex === 'number' ? cand.sdpMLineIndex : null,
       };
-      if (isCaller) call.callerIce.push(entry);
-      else call.calleeIce.push(entry);
-      // Cap ice lists
-      if (call.callerIce.length > 80) call.callerIce = call.callerIce.slice(-80);
-      if (call.calleeIce.length > 80) call.calleeIce = call.calleeIce.slice(-80);
-      await call.save();
-      return NextResponse.json({ call: serialize(call.toObject()) });
+      const field = isCaller ? 'callerIce' : 'calleeIce';
+      const updated = await CallSession.findByIdAndUpdate(
+        id,
+        { $push: { [field]: { $each: [entry], $slice: -100 } } },
+        { new: true }
+      ).lean();
+      return NextResponse.json({ call: serialize(updated) });
     }
 
     if (action === 'accept') {
       if (!isCallee) return NextResponse.json({ message: 'Only callee can accept' }, { status: 403 });
-      if (call.status !== 'ringing') {
+      if (call.status !== 'ringing' && call.status !== 'accepted') {
         return NextResponse.json({ message: 'Call is not ringing', call: serialize(call.toObject()) }, { status: 400 });
       }
-      call.status = 'accepted';
-      await call.save();
-      return NextResponse.json({ call: serialize(call.toObject()) });
+      const updated = await CallSession.findByIdAndUpdate(
+        id,
+        { $set: { status: 'accepted' } },
+        { new: true }
+      ).lean();
+      return NextResponse.json({ call: serialize(updated) });
     }
 
     if (action === 'decline') {
       if (!isCallee) return NextResponse.json({ message: 'Only callee can decline' }, { status: 403 });
-      call.status = 'declined';
-      call.endedAt = new Date();
-      call.endedBy = user.username;
-      await call.save();
-      return NextResponse.json({ call: serialize(call.toObject()) });
+      const updated = await CallSession.findByIdAndUpdate(
+        id,
+        { $set: { status: 'declined', endedAt: new Date(), endedBy: user.username } },
+        { new: true }
+      ).lean();
+      return NextResponse.json({ call: serialize(updated) });
     }
 
     if (action === 'hangup') {
-      if (!ACTIVE.has(call.status) && call.status !== 'accepted') {
-        return NextResponse.json({ call: serialize(call.toObject()) });
-      }
-      call.status = 'ended';
-      call.endedAt = new Date();
-      call.endedBy = user.username;
-      await call.save();
-      return NextResponse.json({ call: serialize(call.toObject()) });
+      const updated = await CallSession.findByIdAndUpdate(
+        id,
+        { $set: { status: 'ended', endedAt: new Date(), endedBy: user.username } },
+        { new: true }
+      ).lean();
+      return NextResponse.json({ call: serialize(updated) });
     }
 
     if (action === 'active') {
-      if (call.status === 'accepted') {
-        call.status = 'active';
-        await call.save();
-      }
-      return NextResponse.json({ call: serialize(call.toObject()) });
+      const updated = await CallSession.findByIdAndUpdate(
+        id,
+        { $set: { status: 'active' } },
+        { new: true }
+      ).lean();
+      return NextResponse.json({ call: serialize(updated) });
     }
 
     return NextResponse.json({ message: 'Unknown action' }, { status: 400 });
