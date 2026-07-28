@@ -146,16 +146,28 @@ export default function TrackerApp() {
   const [chatDraft, setChatDraft] = useState('');
   const [chatSending, setChatSending] = useState(false);
   const [unreadChat, setUnreadChat] = useState(0);
+  const [snippets, setSnippets] = useState([]);
+  const [unreadCode, setUnreadCode] = useState(0);
+  const [codeTitle, setCodeTitle] = useState('');
+  const [codeLang, setCodeLang] = useState('cpp');
+  const [codeBody, setCodeBody] = useState('');
+  const [codeNote, setCodeNote] = useState('');
+  const [codeQid, setCodeQid] = useState('');
+  const [codeSending, setCodeSending] = useState(false);
+  const [expandedCodeId, setExpandedCodeId] = useState(null);
   const sinceRef = useRef(null);
   const chatSinceRef = useRef(null);
+  const codeSinceRef = useRef(null);
   const seenToastIds = useRef(new Set());
   const seenChatIds = useRef(new Set());
+  const seenCodeIds = useRef(new Set());
   const chatEndRef = useRef(null);
   const tabRef = useRef(tab);
 
   useEffect(() => {
     tabRef.current = tab;
     if (tab === 'chat') setUnreadChat(0);
+    if (tab === 'code') setUnreadCode(0);
   }, [tab]);
 
   const solvedSet = useMemo(() => new Set(solved), [solved]);
@@ -194,11 +206,12 @@ export default function TrackerApp() {
   }, []);
 
   const loadAll = useCallback(async () => {
-    const [qs, progress, act, chat] = await Promise.all([
+    const [qs, progress, act, chat, code] = await Promise.all([
       api('/api/questions'),
       api('/api/progress'),
       api('/api/activity'),
       api('/api/chat'),
+      api('/api/code'),
     ]);
     setQuestions(qs.questions);
     applyProgress(progress);
@@ -208,6 +221,9 @@ export default function TrackerApp() {
     setMessages(chat.messages || []);
     chatSinceRef.current = chat.serverTime || new Date().toISOString();
     for (const m of chat.messages || []) seenChatIds.current.add(m.id);
+    setSnippets([...(code.snippets || [])].reverse());
+    codeSinceRef.current = code.serverTime || new Date().toISOString();
+    for (const s of code.snippets || []) seenCodeIds.current.add(s.id);
     await loadBoard();
     await loadPresence();
   }, [loadBoard, loadPresence]);
@@ -315,11 +331,41 @@ export default function TrackerApp() {
     };
     const chatTimer = setInterval(pollChat, 2500);
 
+    const pollCode = async () => {
+      try {
+        const q = codeSinceRef.current ? `?since=${encodeURIComponent(codeSinceRef.current)}` : '';
+        const data = await api(`/api/code${q}`);
+        const incoming = data.snippets || [];
+        if (incoming.length) {
+          setSnippets((prev) => {
+            const map = new Map(prev.map((s) => [s.id, s]));
+            for (const s of incoming) map.set(s.id, s);
+            return [...map.values()].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          });
+          for (const s of incoming) {
+            if (seenCodeIds.current.has(s.id)) continue;
+            seenCodeIds.current.add(s.id);
+            if (s.username !== user.username) {
+              if (tabRef.current !== 'code') {
+                setUnreadCode((n) => n + 1);
+                toast.info(`${s.displayName} shared code: ${s.title}`, { toastId: `code-${s.id}` });
+              }
+            }
+          }
+        }
+        if (data.serverTime) codeSinceRef.current = data.serverTime;
+      } catch {
+        /* ignore */
+      }
+    };
+    const codeTimer = setInterval(pollCode, 4000);
+
     return () => {
       clearInterval(presenceTimer);
       clearInterval(presenceRefresh);
       clearInterval(activityTimer);
       clearInterval(chatTimer);
+      clearInterval(codeTimer);
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('focus', beat);
     };
@@ -336,9 +382,12 @@ export default function TrackerApp() {
     setBooting(true);
     seenToastIds.current = new Set();
     seenChatIds.current = new Set();
+    seenCodeIds.current = new Set();
     sinceRef.current = null;
     chatSinceRef.current = null;
+    codeSinceRef.current = null;
     setUnreadChat(0);
+    setUnreadCode(0);
     try {
       await loadAll();
     } finally {
@@ -355,8 +404,10 @@ export default function TrackerApp() {
     setPeople([]);
     setFeed([]);
     setMessages([]);
+    setSnippets([]);
     setChatDraft('');
     setUnreadChat(0);
+    setUnreadCode(0);
   }
 
   async function sendChat(e) {
@@ -381,6 +432,58 @@ export default function TrackerApp() {
       toast.error(err.message);
     } finally {
       setChatSending(false);
+    }
+  }
+
+  async function shareCode(e) {
+    e?.preventDefault?.();
+    if (!codeTitle.trim() || !codeBody.trim() || codeSending) return;
+    setCodeSending(true);
+    try {
+      const data = await api('/api/code', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: codeTitle.trim(),
+          language: codeLang,
+          code: codeBody,
+          note: codeNote.trim(),
+          qid: codeQid,
+        }),
+      });
+      setCodeTitle('');
+      setCodeBody('');
+      setCodeNote('');
+      setCodeQid('');
+      if (data.snippet) {
+        seenCodeIds.current.add(data.snippet.id);
+        setSnippets((prev) => [data.snippet, ...prev.filter((s) => s.id !== data.snippet.id)]);
+        setExpandedCodeId(data.snippet.id);
+      }
+      toast.success('Code shared');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setCodeSending(false);
+    }
+  }
+
+  async function deleteSnippet(id) {
+    try {
+      await api(`/api/code?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      setSnippets((prev) => prev.filter((s) => s.id !== id));
+      if (expandedCodeId === id) setExpandedCodeId(null);
+      toast.info('Share deleted');
+    } catch (err) {
+      toast.error(err.message);
+    }
+  }
+
+  async function copyCode(code) {
+    try {
+      await navigator.clipboard.writeText(code);
+      toast.success('Copied to clipboard');
+    } catch {
+      toast.error('Could not copy');
     }
   }
 
@@ -501,6 +604,18 @@ export default function TrackerApp() {
               {unreadChat > 0 && tab !== 'chat' && (
                 <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--accent)] px-1 font-mono text-[0.6rem] text-white">
                   {unreadChat > 9 ? '9+' : unreadChat}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              className={`relative rounded-lg px-3.5 py-1.5 text-sm font-semibold ${tab === 'code' ? 'bg-white text-[var(--ink)] shadow-sm' : 'text-[var(--muted)]'}`}
+              onClick={() => setTab('code')}
+            >
+              Code
+              {unreadCode > 0 && tab !== 'code' && (
+                <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--accent)] px-1 font-mono text-[0.6rem] text-white">
+                  {unreadCode > 9 ? '9+' : unreadCode}
                 </span>
               )}
             </button>
@@ -828,6 +943,141 @@ export default function TrackerApp() {
                 {chatSending ? '…' : 'Send'}
               </button>
             </form>
+          </section>
+        )}
+
+        {tab === 'code' && (
+          <section className="grid gap-4 lg:grid-cols-[360px_1fr]">
+            <form onSubmit={shareCode} className="rounded-[18px] border border-[var(--line)] bg-white p-4 shadow-[var(--shadow)]">
+              <h2 className="m-0 text-xl font-bold tracking-tight">Share code</h2>
+              <p className="mt-1 mb-4 text-sm text-[var(--muted)]">Post a solution so your partner can review and copy it.</p>
+              <label className="mb-3 block text-sm font-medium">
+                Title
+                <input
+                  value={codeTitle}
+                  onChange={(e) => setCodeTitle(e.target.value)}
+                  placeholder="e.g. Kadane DP approach"
+                  required
+                  className="mt-1.5 w-full rounded-[10px] border border-[var(--line)] bg-[#fbfdfc] px-3 py-2.5 outline-none focus:border-[var(--accent)]"
+                />
+              </label>
+              <label className="mb-3 block text-sm font-medium">
+                Language
+                <select
+                  value={codeLang}
+                  onChange={(e) => setCodeLang(e.target.value)}
+                  className="mt-1.5 w-full rounded-[10px] border border-[var(--line)] bg-[#fbfdfc] px-3 py-2.5"
+                >
+                  <option value="cpp">C++</option>
+                  <option value="java">Java</option>
+                  <option value="python">Python</option>
+                  <option value="javascript">JavaScript</option>
+                  <option value="c">C</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+              <label className="mb-3 block text-sm font-medium">
+                Linked question (optional)
+                <select
+                  value={codeQid}
+                  onChange={(e) => setCodeQid(e.target.value)}
+                  className="mt-1.5 w-full rounded-[10px] border border-[var(--line)] bg-[#fbfdfc] px-3 py-2.5"
+                >
+                  <option value="">No linked question</option>
+                  {questions.map((q) => (
+                    <option key={q.qid} value={q.qid}>
+                      #{q.order} {q.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="mb-3 block text-sm font-medium">
+                Note (optional)
+                <input
+                  value={codeNote}
+                  onChange={(e) => setCodeNote(e.target.value)}
+                  placeholder="Time complexity, tip, etc."
+                  className="mt-1.5 w-full rounded-[10px] border border-[var(--line)] bg-[#fbfdfc] px-3 py-2.5 outline-none focus:border-[var(--accent)]"
+                />
+              </label>
+              <label className="mb-3 block text-sm font-medium">
+                Code
+                <textarea
+                  value={codeBody}
+                  onChange={(e) => setCodeBody(e.target.value)}
+                  required
+                  rows={12}
+                  placeholder="Paste your solution…"
+                  className="mt-1.5 w-full resize-y rounded-[10px] border border-[var(--line)] bg-[#0f1714] px-3 py-2.5 font-mono text-xs leading-relaxed text-[#d8f3e6] outline-none focus:border-[var(--accent)]"
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={codeSending || !codeTitle.trim() || !codeBody.trim()}
+                className="w-full rounded-[10px] bg-[var(--accent)] px-4 py-2.5 font-semibold text-white hover:bg-[#0c6541] disabled:opacity-50"
+              >
+                {codeSending ? 'Sharing…' : 'Share with partner'}
+              </button>
+            </form>
+
+            <div className="rounded-[18px] border border-[var(--line)] bg-white p-4 shadow-[var(--shadow)]">
+              <h2 className="m-0 text-xl font-bold tracking-tight">Shared solutions</h2>
+              <p className="mt-1 mb-4 text-sm text-[var(--muted)]">Newest first — expand to view or copy.</p>
+              <div className="grid gap-3">
+                {snippets.length === 0 && <p className="py-10 text-center text-[var(--muted)]">No shared code yet.</p>}
+                {snippets.map((s) => {
+                  const open = expandedCodeId === s.id;
+                  return (
+                    <article key={s.id} className="rounded-xl border border-[var(--line)] bg-[#fbfdfc] p-3.5">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <h3 className="m-0 text-base font-bold">{s.title}</h3>
+                          <p className="mt-1 m-0 font-mono text-xs text-[var(--muted)]">
+                            <span className="capitalize text-[var(--accent)]">{s.displayName}</span>
+                            {' · '}
+                            {s.language}
+                            {s.questionTitle ? ` · ${s.questionTitle}` : ''}
+                            {' · '}
+                            {timeAgo(s.createdAt)}
+                          </p>
+                          {s.note && <p className="mt-1 mb-0 text-sm text-[var(--muted)]">{s.note}</p>}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedCodeId(open ? null : s.id)}
+                            className="rounded-lg border border-[var(--line)] bg-white px-2.5 py-1.5 text-xs font-semibold"
+                          >
+                            {open ? 'Hide' : 'View'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => copyCode(s.code)}
+                            className="rounded-lg border border-[var(--line)] bg-white px-2.5 py-1.5 text-xs font-semibold"
+                          >
+                            Copy
+                          </button>
+                          {s.username === user.username && (
+                            <button
+                              type="button"
+                              onClick={() => deleteSnippet(s.id)}
+                              className="rounded-lg border border-[#fee4e2] bg-white px-2.5 py-1.5 text-xs font-semibold text-[var(--danger)]"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {open && (
+                        <pre className="mt-3 max-h-[420px] overflow-auto rounded-xl bg-[#0f1714] p-3 font-mono text-xs leading-relaxed text-[#d8f3e6] whitespace-pre-wrap break-words">
+                          {s.code}
+                        </pre>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
           </section>
         )}
 
