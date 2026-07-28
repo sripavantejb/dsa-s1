@@ -23,8 +23,10 @@ function formatDuration(totalSeconds = 0) {
 function personView(u, p, meUsername, now = Date.now()) {
   const lastSeen = p?.lastSeen ? new Date(p.lastSeen).getTime() : 0;
   const lastFocused = p?.lastFocusedAt ? new Date(p.lastFocusedAt).getTime() : 0;
+  const typingAt = p?.typingAt ? new Date(p.typingAt).getTime() : 0;
   const online = lastSeen > 0 && now - lastSeen < ONLINE_MS;
   const focused = online && lastFocused > 0 && now - lastFocused < ACTIVE_MS;
+  const typing = online && typingAt > 0 && now - typingAt < 4000;
   let status = 'offline';
   if (focused) status = 'active';
   else if (online) status = 'idle';
@@ -37,6 +39,7 @@ function personView(u, p, meUsername, now = Date.now()) {
     displayName: u.displayName,
     online,
     status,
+    typing,
     lastSeen: p?.lastSeen || null,
     lastFocusedAt: p?.lastFocusedAt || null,
     secondsToday,
@@ -56,6 +59,7 @@ export async function POST(req) {
 
     const body = await req.json().catch(() => ({}));
     const focused = !!body.focused;
+    const typing = !!body.typing;
     const delta = Math.min(MAX_DELTA, Math.max(0, Number(body.deltaSeconds) || 0));
     const today = todayKey();
     const now = new Date();
@@ -79,6 +83,7 @@ export async function POST(req) {
         secondsToday,
         secondsTotal,
         ...(focused ? { lastFocusedAt: now } : {}),
+        ...(typing ? { typingAt: now } : { typingAt: null }),
       },
       { upsert: true, new: true }
     );
@@ -88,6 +93,7 @@ export async function POST(req) {
       secondsToday: doc.secondsToday,
       timeToday: formatDuration(doc.secondsToday),
       status: focused ? 'active' : 'idle',
+      typing,
     });
   } catch (err) {
     console.error(err);

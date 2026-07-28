@@ -13,6 +13,7 @@ const PresenceSchema = new mongoose.Schema(
     secondsTotal: { type: Number, default: 0 },
     /** Last time they were focused in-tab */
     lastFocusedAt: { type: Date, default: null },
+    typingAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

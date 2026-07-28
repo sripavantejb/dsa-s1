@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { SnapAvatar } from './SnapAvatar';
+
+const REACTION_EMOJIS = ['❤️', '👍', '😂', '🔥', '💯', '😮', '😢', '👏'];
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
@@ -33,9 +36,11 @@ function popBrowserNotification(title, body) {
 }
 
 function notifToast(n) {
+  // Chat stays in the Alerts panel count only — no toast text
+  if (n.type === 'chat') return;
   const msg = `${n.title}: ${n.body}`;
   if (n.type === 'finished' || n.type === 'streak' || n.type === 'code') toast.success(msg, { toastId: n.id });
-  else if (n.type === 'chat' || n.type === 'attempted') toast.info(msg, { toastId: n.id });
+  else if (n.type === 'attempted') toast.info(msg, { toastId: n.id });
   else toast.warn(msg, { toastId: n.id });
   popBrowserNotification(n.title, n.body);
 }
@@ -181,6 +186,10 @@ export default function TrackerApp() {
   const [chatDraft, setChatDraft] = useState('');
   const [chatSending, setChatSending] = useState(false);
   const [unreadChat, setUnreadChat] = useState(0);
+  const [replyTo, setReplyTo] = useState(null);
+  const [reactMenuId, setReactMenuId] = useState(null);
+  const chatDraftRef = useRef('');
+  const typingClearRef = useRef(null);
   const [snippets, setSnippets] = useState([]);
   const [unreadCode, setUnreadCode] = useState(0);
   const [notifications, setNotifications] = useState([]);
@@ -322,9 +331,11 @@ export default function TrackerApp() {
       const now = Date.now();
       const deltaSeconds = Math.min(20, Math.max(0, Math.round((now - lastBeat) / 1000)));
       lastBeat = now;
+      const typing =
+        tabRef.current === 'chat' && chatDraftRef.current.trim().length > 0 && isFocused();
       api('/api/presence', {
         method: 'POST',
-        body: JSON.stringify({ focused: isFocused(), deltaSeconds }),
+        body: JSON.stringify({ focused: isFocused(), deltaSeconds, typing }),
       })
         .then(() => loadPresence())
         .catch(() => {});
@@ -526,9 +537,11 @@ export default function TrackerApp() {
     try {
       const data = await api('/api/chat', {
         method: 'POST',
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, replyToId: replyTo?.id || '' }),
       });
       setChatDraft('');
+      chatDraftRef.current = '';
+      setReplyTo(null);
       if (data.message) {
         seenChatIds.current.add(data.message.id);
         setMessages((prev) => {
@@ -540,6 +553,40 @@ export default function TrackerApp() {
       toast.error(err.message);
     } finally {
       setChatSending(false);
+    }
+  }
+
+  async function reactToMessage(id, emoji) {
+    try {
+      const data = await api('/api/chat', {
+        method: 'PATCH',
+        body: JSON.stringify({ id, emoji }),
+      });
+      if (data.message) {
+        setMessages((prev) => prev.map((m) => (m.id === data.message.id ? data.message : m)));
+      }
+      setReactMenuId(null);
+    } catch (err) {
+      toast.error(err.message);
+    }
+  }
+
+  function onChatDraftChange(value) {
+    setChatDraft(value);
+    chatDraftRef.current = value;
+    if (typingClearRef.current) clearTimeout(typingClearRef.current);
+    if (value.trim()) {
+      api('/api/presence', {
+        method: 'POST',
+        body: JSON.stringify({ focused: true, deltaSeconds: 0, typing: true }),
+      }).catch(() => {});
+      typingClearRef.current = setTimeout(() => {
+        chatDraftRef.current = chatDraftRef.current;
+        api('/api/presence', {
+          method: 'POST',
+          body: JSON.stringify({ focused: true, deltaSeconds: 0, typing: false }),
+        }).catch(() => {});
+      }, 2000);
     }
   }
 
@@ -795,6 +842,7 @@ export default function TrackerApp() {
                   title={`${meta.label} · ${p.timeToday || '0s'} today`}
                 >
                   <span className={`h-2 w-2 rounded-full ${meta.dot}`} />
+                  <SnapAvatar username={p.username} size={22} className="avatar-pop" />
                   <span className="capitalize">{p.displayName}</span>
                   <span className="font-mono text-[0.65rem] text-[var(--muted)]">{p.timeToday || '0s'}</span>
                   {p.isYou && <span className="font-mono text-[0.65rem] text-[var(--muted)]">you</span>}
@@ -1005,10 +1053,20 @@ export default function TrackerApp() {
                 return (
                   <div key={p.username} className="rounded-xl border border-[var(--line)] bg-[#fbfdfc] px-4 py-3">
                     <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="m-0 text-lg font-bold capitalize">{p.displayName}</p>
-                        <p className="m-0 text-sm text-[var(--muted)]">{p.isYou ? 'That’s you' : 'Partner'}</p>
-                      </div>
+                    <div className="relative">
+                      <SnapAvatar username={p.username} size={44} className="avatar-pop" />
+                      <span
+                        className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white ${
+                          p.status === 'active' ? 'bg-emerald-500' : p.status === 'idle' ? 'bg-amber-400' : 'bg-slate-300'
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <p className="m-0 text-lg font-bold capitalize">{p.displayName}</p>
+                      <p className="m-0 text-sm text-[var(--muted)]">
+                        {p.isYou ? 'That’s you' : p.typing ? 'typing…' : 'Partner'}
+                      </p>
+                    </div>
                       <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${meta.className}`}>{meta.label}</span>
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-2 border-t border-[var(--line)] pt-3">
@@ -1061,42 +1119,142 @@ export default function TrackerApp() {
         )}
 
         {tab === 'chat' && (
-          <section className="flex min-h-[70vh] flex-col rounded-[18px] border border-[var(--line)] bg-white shadow-[var(--shadow)]">
-            <div className="border-b border-[var(--line)] px-4 py-3">
-              <h2 className="m-0 text-xl font-bold tracking-tight">Chat</h2>
-              <p className="m-0 mt-1 text-sm text-[var(--muted)]">
-                Tej ↔ Hafsa — blue ticks mean seen, like WhatsApp.
-              </p>
+          <section className="flex min-h-[70vh] flex-col overflow-hidden rounded-[18px] border border-[var(--line)] bg-white shadow-[var(--shadow)]">
+            <div className="flex items-center gap-3 border-b border-[var(--line)] px-4 py-3">
+              {(() => {
+                const partner = people.find((p) => !p.isYou) || { username: user.username === 'tej' ? 'hafsa' : 'tej', displayName: user.username === 'tej' ? 'Hafsa' : 'Tej', typing: false, status: 'offline' };
+                const meta = statusMeta(partner.status || 'offline');
+                return (
+                  <>
+                    <div className="relative">
+                      <SnapAvatar username={partner.username} size={48} className="avatar-pop" />
+                      <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white ${meta.dot}`} />
+                    </div>
+                    <div>
+                      <h2 className="m-0 text-xl font-bold tracking-tight capitalize">{partner.displayName}</h2>
+                      <p className="m-0 text-sm text-[var(--muted)]">
+                        {partner.typing ? (
+                          <span className="typing-dots text-[var(--accent)] font-semibold">typing</span>
+                        ) : (
+                          meta.label
+                        )}
+                        {partner.timeToday ? ` · ${partner.timeToday} today` : ''}
+                      </p>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
-            <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+            <div className="flex-1 space-y-3 overflow-y-auto bg-[linear-gradient(180deg,#f7faf8_0%,#eef4f0_100%)] px-4 py-4">
               {messages.length === 0 && (
                 <p className="py-12 text-center text-[var(--muted)]">No messages yet. Say hi and start the grind talk.</p>
               )}
-              {messages.map((m) => {
+              {messages.map((m, idx) => {
                 const mine = m.username === user.username;
+                const reactionEntries = Object.entries(m.reactions || {});
                 return (
-                  <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                    <div
-                      className={`max-w-[min(520px,85%)] rounded-2xl px-3.5 py-2.5 ${
-                        mine ? 'rounded-br-md bg-[var(--accent)] text-white' : 'rounded-bl-md bg-[#eef4f0] text-[var(--ink)]'
-                      }`}
-                    >
-                      {!mine && <p className="m-0 mb-1 text-xs font-semibold capitalize opacity-80">{m.displayName}</p>}
-                      <p className="m-0 whitespace-pre-wrap break-words text-sm leading-relaxed">{m.text}</p>
-                      <p className={`m-0 mt-1 flex items-center justify-end gap-0.5 font-mono text-[0.65rem] ${mine ? 'text-white/70' : 'text-[var(--muted)]'}`}>
-                        <span>{timeAgo(m.createdAt)}</span>
-                        {mine && <ReadTicks seen={!!m.seen} />}
-                      </p>
+                  <div
+                    key={m.id}
+                    className={`chat-bubble-in flex items-end gap-2 ${mine ? 'justify-end' : 'justify-start'}`}
+                    style={{ animationDelay: `${Math.min(idx, 8) * 20}ms` }}
+                  >
+                    {!mine && <SnapAvatar username={m.username} size={32} />}
+                    <div className="group relative max-w-[min(520px,78%)]">
+                      <div
+                        className={`rounded-2xl px-3.5 py-2.5 shadow-sm ${
+                          mine ? 'rounded-br-md bg-[var(--accent)] text-white' : 'rounded-bl-md bg-white text-[var(--ink)]'
+                        }`}
+                      >
+                        {m.replyTo && (
+                          <div className={`mb-2 rounded-lg border-l-2 px-2 py-1 text-xs ${mine ? 'border-white/50 bg-white/10' : 'border-[var(--accent)] bg-[#eef4f0]'}`}>
+                            <p className="m-0 font-semibold capitalize opacity-80">{m.replyTo.displayName}</p>
+                            <p className="m-0 truncate opacity-80">{m.replyTo.text}</p>
+                          </div>
+                        )}
+                        {!mine && <p className="m-0 mb-1 text-xs font-semibold capitalize opacity-80">{m.displayName}</p>}
+                        <p className="m-0 whitespace-pre-wrap break-words text-sm leading-relaxed">{m.text}</p>
+                        <p className={`m-0 mt-1 flex items-center justify-end gap-0.5 font-mono text-[0.65rem] ${mine ? 'text-white/70' : 'text-[var(--muted)]'}`}>
+                          <span>{timeAgo(m.createdAt)}</span>
+                          {mine && <ReadTicks seen={!!m.seen} />}
+                        </p>
+                      </div>
+                      {reactionEntries.length > 0 && (
+                        <div className={`mt-1 flex flex-wrap gap-1 ${mine ? 'justify-end' : 'justify-start'}`}>
+                          {reactionEntries.map(([emoji, users]) => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              onClick={() => reactToMessage(m.id, emoji)}
+                              className={`rounded-full border border-[var(--line)] bg-white px-1.5 py-0.5 text-xs shadow-sm ${
+                                users.includes(user.username) ? 'ring-1 ring-[var(--accent)]' : ''
+                              }`}
+                            >
+                              {emoji} {users.length > 1 ? users.length : ''}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <div className={`absolute -bottom-2 ${mine ? 'left-0' : 'right-0'} hidden gap-1 group-hover:flex`}>
+                        <button
+                          type="button"
+                          onClick={() => setReactMenuId(reactMenuId === m.id ? null : m.id)}
+                          className="rounded-full border border-[var(--line)] bg-white px-2 py-0.5 text-[0.65rem] font-semibold shadow"
+                        >
+                          React
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setReplyTo({ id: m.id, text: m.text, displayName: m.displayName })}
+                          className="rounded-full border border-[var(--line)] bg-white px-2 py-0.5 text-[0.65rem] font-semibold shadow"
+                        >
+                          Reply
+                        </button>
+                      </div>
+                      {reactMenuId === m.id && (
+                        <div className={`absolute z-10 mt-2 flex gap-1 rounded-full border border-[var(--line)] bg-white p-1 shadow ${mine ? 'right-0' : 'left-0'}`}>
+                          {REACTION_EMOJIS.map((emoji) => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              onClick={() => reactToMessage(m.id, emoji)}
+                              className="rounded-full px-1.5 py-0.5 text-sm hover:scale-125 transition-transform"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
+                    {mine && <SnapAvatar username={m.username} size={32} />}
                   </div>
                 );
               })}
+              {people.some((p) => !p.isYou && p.typing) && (
+                <div className="chat-bubble-in flex items-end gap-2">
+                  <SnapAvatar username={people.find((p) => !p.isYou)?.username} size={32} />
+                  <div className="rounded-2xl rounded-bl-md bg-white px-4 py-3 shadow-sm">
+                    <span className="typing-dots text-[var(--muted)]">typing</span>
+                  </div>
+                </div>
+              )}
               <div ref={chatEndRef} />
             </div>
+            {replyTo && (
+              <div className="flex items-center justify-between border-t border-[var(--line)] bg-[#f1faf5] px-3 py-2 text-sm">
+                <div>
+                  <p className="m-0 font-semibold text-[var(--accent)]">Replying to {replyTo.displayName}</p>
+                  <p className="m-0 truncate text-[var(--muted)]">{replyTo.text}</p>
+                </div>
+                <button type="button" onClick={() => setReplyTo(null)} className="font-semibold text-[var(--muted)]">
+                  ✕
+                </button>
+              </div>
+            )}
             <form onSubmit={sendChat} className="flex gap-2 border-t border-[var(--line)] p-3">
+              <SnapAvatar username={user.username} size={36} className="mt-0.5" />
               <input
                 value={chatDraft}
-                onChange={(e) => setChatDraft(e.target.value)}
+                onChange={(e) => onChatDraftChange(e.target.value)}
                 placeholder="Type a message…"
                 maxLength={2000}
                 className="flex-1 rounded-[10px] border border-[var(--line)] bg-[#fbfdfc] px-3 py-2.5 outline-none focus:border-[var(--accent)]"

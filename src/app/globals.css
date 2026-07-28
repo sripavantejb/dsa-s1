@@ -51,3 +51,57 @@ body {
 .animate-rise {
   animation: rise 0.45s ease both;
 }
+
+@keyframes chatIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.chat-bubble-in {
+  animation: chatIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes avatarPop {
+  0% {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.avatar-pop {
+  animation: avatarPop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes typingPulse {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+.typing-dots::after {
+  content: '…';
+  display: inline-block;
+  letter-spacing: 1px;
+  animation: typingPulse 1.2s infinite;
+}
+

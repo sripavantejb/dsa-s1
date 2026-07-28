@@ -5,7 +5,14 @@ import { getAuthUser } from '@/lib/auth';
 import Message from '@/lib/models/Message.js';
 import { notifyPartner } from '@/lib/notify';
 
+const ALLOWED_EMOJIS = new Set(['❤️', '👍', '😂', '🔥', '💯', '😮', '😢', '👏']);
+
 function serialize(m) {
+  const reactions = {};
+  for (const r of m.reactions || []) {
+    if (!reactions[r.emoji]) reactions[r.emoji] = [];
+    reactions[r.emoji].push(r.username);
+  }
   return {
     id: String(m._id),
     username: m.username,
@@ -14,6 +21,14 @@ function serialize(m) {
     createdAt: m.createdAt,
     seenAt: m.seenAt || null,
     seen: !!m.seenAt,
+    reactions,
+    replyTo: m.replyTo?.id
+      ? {
+          id: m.replyTo.id,
+          text: m.replyTo.text,
+          displayName: m.replyTo.displayName,
+        }
+      : null,
   };
 }
 
@@ -59,17 +74,31 @@ export async function POST(req) {
     if (!text) return NextResponse.json({ message: 'Message cannot be empty' }, { status: 400 });
     if (text.length > 2000) return NextResponse.json({ message: 'Message too long' }, { status: 400 });
 
+    let replyTo = { id: '', text: '', displayName: '' };
+    if (body.replyToId) {
+      const parent = await Message.findById(body.replyToId).lean();
+      if (parent) {
+        replyTo = {
+          id: String(parent._id),
+          text: String(parent.text).slice(0, 120),
+          displayName: parent.displayName,
+        };
+      }
+    }
+
     const msg = await Message.create({
       username: user.username,
       displayName: user.displayName,
       text,
       seenAt: null,
+      reactions: [],
+      replyTo,
     });
 
     await notifyPartner(user, {
       type: 'chat',
-      title: `Message from ${user.displayName}`,
-      body: text.slice(0, 120),
+      title: `${user.displayName} sent a message`,
+      body: 'Open Chat to read',
       linkTab: 'chat',
     });
 
@@ -77,5 +106,40 @@ export async function POST(req) {
   } catch (err) {
     console.error(err);
     return NextResponse.json({ message: 'Failed to send' }, { status: 500 });
+  }
+}
+
+export async function PATCH(req) {
+  try {
+    await connectDB();
+    await ensureSeeded();
+    const user = await getAuthUser();
+    if (!user) return NextResponse.json({ message: 'Login required' }, { status: 401 });
+
+    const body = await req.json();
+    const id = String(body.id || '');
+    const emoji = String(body.emoji || '');
+    if (!id || !ALLOWED_EMOJIS.has(emoji)) {
+      return NextResponse.json({ message: 'Invalid reaction' }, { status: 400 });
+    }
+
+    const msg = await Message.findById(id);
+    if (!msg) return NextResponse.json({ message: 'Not found' }, { status: 404 });
+
+    const existing = (msg.reactions || []).find((r) => r.username === user.username && r.emoji === emoji);
+    if (existing) {
+      msg.reactions = msg.reactions.filter((r) => !(r.username === user.username && r.emoji === emoji));
+    } else {
+      msg.reactions = [
+        ...(msg.reactions || []).filter((r) => r.username !== user.username || r.emoji !== emoji),
+        { emoji, username: user.username },
+      ];
+    }
+    await msg.save();
+
+    return NextResponse.json({ message: serialize(msg.toObject()) });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ message: 'Failed to react' }, { status: 500 });
   }
 }
