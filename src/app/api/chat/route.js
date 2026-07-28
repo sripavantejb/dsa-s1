@@ -12,6 +12,8 @@ function serialize(m) {
     displayName: m.displayName,
     text: m.text,
     createdAt: m.createdAt,
+    seenAt: m.seenAt || null,
+    seen: !!m.seenAt,
   };
 }
 
@@ -23,15 +25,17 @@ export async function GET(req) {
     if (!user) return NextResponse.json({ message: 'Login required' }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const since = searchParams.get('since');
-    const filter = {};
-    if (since) {
-      const d = new Date(since);
-      if (!Number.isNaN(d.getTime())) filter.createdAt = { $gt: d };
+    const markSeen = searchParams.get('markSeen') === '1';
+
+    if (markSeen) {
+      await Message.updateMany(
+        { username: { $ne: user.username }, seenAt: null },
+        { $set: { seenAt: new Date() } }
+      );
     }
 
-    const messages = await Message.find(filter).sort({ createdAt: since ? 1 : -1 }).limit(since ? 100 : 80).lean();
-    const list = since ? messages : messages.reverse();
+    const messages = await Message.find().sort({ createdAt: -1 }).limit(100).lean();
+    const list = messages.reverse();
 
     return NextResponse.json({
       messages: list.map(serialize),
@@ -59,6 +63,7 @@ export async function POST(req) {
       username: user.username,
       displayName: user.displayName,
       text,
+      seenAt: null,
     });
 
     await notifyPartner(user, {

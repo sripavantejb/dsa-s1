@@ -56,6 +56,30 @@ function CheckIcon() {
   );
 }
 
+function ReadTicks({ seen }) {
+  return (
+    <span className="ml-1.5 inline-flex items-center align-middle" title={seen ? 'Seen' : 'Sent'} aria-label={seen ? 'Seen' : 'Sent'}>
+      <svg width="14" height="10" viewBox="0 0 16 11" fill="none" className="inline">
+        <path
+          d="M1.5 5.5L4.5 8.5L10.5 1.5"
+          stroke={seen ? '#53bdeb' : 'currentColor'}
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M5.5 5.5L8.5 8.5L14.5 1.5"
+          stroke={seen ? '#53bdeb' : 'currentColor'}
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={seen ? 1 : 0.55}
+        />
+      </svg>
+    </span>
+  );
+}
+
 function Login({ onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -183,7 +207,15 @@ export default function TrackerApp() {
 
   useEffect(() => {
     tabRef.current = tab;
-    if (tab === 'chat') setUnreadChat(0);
+    if (tab === 'chat') {
+      setUnreadChat(0);
+      api('/api/chat?markSeen=1')
+        .then((data) => {
+          setMessages(data.messages || []);
+          if (data.serverTime) chatSinceRef.current = data.serverTime;
+        })
+        .catch(() => {});
+    }
     if (tab === 'code') setUnreadCode(0);
   }, [tab]);
 
@@ -336,23 +368,17 @@ export default function TrackerApp() {
 
     const pollChat = async () => {
       try {
-        const q = chatSinceRef.current ? `?since=${encodeURIComponent(chatSinceRef.current)}` : '';
-        const data = await api(`/api/chat${q}`);
-        const incoming = data.messages || [];
-        if (incoming.length) {
-          setMessages((prev) => {
-            const map = new Map(prev.map((m) => [m.id, m]));
-            for (const m of incoming) map.set(m.id, m);
-            return [...map.values()].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-          });
-          for (const m of incoming) {
-            if (seenChatIds.current.has(m.id)) continue;
-            seenChatIds.current.add(m.id);
-            if (m.username !== user.username && tabRef.current !== 'chat') {
-              setUnreadChat((n) => n + 1);
-            }
+        const mark = tabRef.current === 'chat' ? '?markSeen=1' : '';
+        const data = await api(`/api/chat${mark}`);
+        const list = data.messages || [];
+        const prevIds = seenChatIds.current;
+        for (const m of list) {
+          if (!prevIds.has(m.id) && m.username !== user.username && tabRef.current !== 'chat') {
+            setUnreadChat((n) => n + 1);
           }
+          prevIds.add(m.id);
         }
+        setMessages(list);
         if (data.serverTime) chatSinceRef.current = data.serverTime;
       } catch {
         /* ignore */
@@ -1038,7 +1064,9 @@ export default function TrackerApp() {
           <section className="flex min-h-[70vh] flex-col rounded-[18px] border border-[var(--line)] bg-white shadow-[var(--shadow)]">
             <div className="border-b border-[var(--line)] px-4 py-3">
               <h2 className="m-0 text-xl font-bold tracking-tight">Chat</h2>
-              <p className="m-0 mt-1 text-sm text-[var(--muted)]">Tej ↔ Hafsa — messages update live for both of you.</p>
+              <p className="m-0 mt-1 text-sm text-[var(--muted)]">
+                Tej ↔ Hafsa — blue ticks mean seen, like WhatsApp.
+              </p>
             </div>
             <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
               {messages.length === 0 && (
@@ -1055,8 +1083,9 @@ export default function TrackerApp() {
                     >
                       {!mine && <p className="m-0 mb-1 text-xs font-semibold capitalize opacity-80">{m.displayName}</p>}
                       <p className="m-0 whitespace-pre-wrap break-words text-sm leading-relaxed">{m.text}</p>
-                      <p className={`m-0 mt-1 font-mono text-[0.65rem] ${mine ? 'text-white/70' : 'text-[var(--muted)]'}`}>
-                        {timeAgo(m.createdAt)}
+                      <p className={`m-0 mt-1 flex items-center justify-end gap-0.5 font-mono text-[0.65rem] ${mine ? 'text-white/70' : 'text-[var(--muted)]'}`}>
+                        <span>{timeAgo(m.createdAt)}</span>
+                        {mine && <ReadTicks seen={!!m.seen} />}
                       </p>
                     </div>
                   </div>
