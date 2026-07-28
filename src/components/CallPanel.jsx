@@ -3,28 +3,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SnapAvatar } from './SnapAvatar';
 
-/** STUN + public TURN so calls work across different networks/NATs */
+/** Multiple STUN/TURN so calls connect across Wi‑Fi / mobile NATs */
 const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    {
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
+    { urls: 'stun:stun.cloudflare.com:3478' },
+    // freeTURN (no signup)
+    { urls: 'turn:freeturn.net:3478', username: 'free', credential: 'free' },
+    { urls: 'turn:freeturn.net:3478?transport=tcp', username: 'free', credential: 'free' },
+    { urls: 'turns:freeturn.net:5349', username: 'free', credential: 'free' },
+    // Metered Open Relay
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
   ],
-  iceCandidatePoolSize: 10,
+  iceCandidatePoolSize: 8,
 };
 
 const LIVE = new Set(['ringing', 'accepted', 'active']);
@@ -53,20 +47,19 @@ function LockIcon() {
   );
 }
 
-/**
- * WebRTC voice/video — media is DTLS-SRTP E2E; signaling via /api/call.
- */
 export function CallController({ user, partner, startButtonsClassName = '' }) {
   const [call, setCall] = useState(null);
   const [error, setError] = useState('');
   const [muted, setMuted] = useState(false);
   const [camOff, setCamOff] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  const [phase, setPhase] = useState(''); // calling | connecting | connected
+  const [phase, setPhase] = useState('');
   const [pcState, setPcState] = useState('');
+  const [needGesture, setNeedGesture] = useState(false);
 
   const pcRef = useRef(null);
   const localStreamRef = useRef(null);
+  const remoteStreamRef = useRef(null);
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const remoteAudioRef = useRef(null);
@@ -80,19 +73,41 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
   const busyRef = useRef(false);
   const handleSignalRef = useRef(async () => {});
 
-  const attachRemoteStream = useCallback((stream) => {
-    if (!stream) return;
-    if (remoteAudioRef.current) {
-      remoteAudioRef.current.srcObject = stream;
-      remoteAudioRef.current.volume = 1;
-      remoteAudioRef.current.muted = false;
-      remoteAudioRef.current.play().catch(() => {});
+  const playRemote = useCallback(async () => {
+    const audio = remoteAudioRef.current;
+    const video = remoteVideoRef.current;
+    const stream = remoteStreamRef.current;
+    if (stream) {
+      if (audio && audio.srcObject !== stream) audio.srcObject = stream;
+      if (video && video.srcObject !== stream) video.srcObject = stream;
     }
-    if (remoteVideoRef.current) {
-      remoteVideoRef.current.srcObject = stream;
-      remoteVideoRef.current.play().catch(() => {});
+    try {
+      if (audio) {
+        audio.muted = false;
+        audio.volume = 1;
+        await audio.play();
+      }
+      if (video) await video.play();
+      setNeedGesture(false);
+    } catch {
+      setNeedGesture(true);
     }
   }, []);
+
+  const attachRemoteStream = useCallback(
+    (stream) => {
+      if (!stream) return;
+      remoteStreamRef.current = stream;
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = stream;
+      }
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = stream;
+      }
+      playRemote();
+    },
+    [playRemote]
+  );
 
   const cleanupMedia = useCallback(() => {
     if (pcRef.current) {
@@ -111,6 +126,7 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
       localStreamRef.current.getTracks().forEach((t) => t.stop());
       localStreamRef.current = null;
     }
+    remoteStreamRef.current = null;
     offerSentRef.current = false;
     answerSentRef.current = false;
     remoteDescSetRef.current = false;
@@ -133,6 +149,7 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
     setMuted(false);
     setCamOff(false);
     setError('');
+    setNeedGesture(false);
   }, [cleanupMedia]);
 
   const flushPendingIce = useCallback(async () => {
@@ -167,7 +184,7 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
           noiseSuppression: true,
           autoGainControl: true,
         },
-        video: mode === 'video',
+        video: mode === 'video' ? { facingMode: 'user' } : false,
       });
       localStreamRef.current = stream;
       if (localVideoRef.current) {
@@ -181,8 +198,10 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
 
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
+      const remote = new MediaStream();
+      remoteStreamRef.current = remote;
       pc.ontrack = (ev) => {
-        const remote = ev.streams?.[0] || new MediaStream([ev.track]);
+        if (ev.track) remote.addTrack(ev.track);
         attachRemoteStream(remote);
       };
 
@@ -202,23 +221,26 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
         }).catch(() => {});
       };
 
+      const markConnected = () => {
+        if (startedAtRef.current) return;
+        startedAtRef.current = Date.now();
+        setPhase('connected');
+        playRemote();
+        api('/api/call', {
+          method: 'PATCH',
+          body: JSON.stringify({ id: callIdRef.current, action: 'active' }),
+        }).catch(() => {});
+      };
+
       const onConn = () => {
-        const state = pc.connectionState || pc.iceConnectionState;
-        setPcState(state);
-        if ((pc.connectionState === 'connected' || pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') && !startedAtRef.current) {
-          startedAtRef.current = Date.now();
-          setPhase('connected');
-          // Ensure audio is playing once connected
-          if (remoteAudioRef.current?.srcObject) {
-            remoteAudioRef.current.play().catch(() => {});
-          }
-          api('/api/call', {
-            method: 'PATCH',
-            body: JSON.stringify({ id: callIdRef.current, action: 'active' }),
-          }).catch(() => {});
+        const ice = pc.iceConnectionState;
+        const conn = pc.connectionState;
+        setPcState(conn || ice);
+        if (conn === 'connected' || ice === 'connected' || ice === 'completed') {
+          markConnected();
         }
-        if (pc.connectionState === 'failed' || pc.iceConnectionState === 'failed') {
-          setError('Could not connect — check mic permission, or try again');
+        if (conn === 'failed' || ice === 'failed') {
+          setError('Could not connect — both open the site, allow mic, try again');
           try {
             pc.restartIce();
           } catch {
@@ -231,35 +253,32 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
 
       return pc;
     },
-    [attachRemoteStream]
+    [attachRemoteStream, playRemote]
   );
 
-  const applyRemoteIce = useCallback(
-    async (list) => {
-      if (!list?.length) return;
-      for (const c of list) {
-        if (!c?.candidate) continue;
-        if (appliedIceRef.current.has(c.candidate)) continue;
-        if (!remoteDescSetRef.current || !pcRef.current) {
-          pendingIceRef.current.push(c);
-          continue;
-        }
-        appliedIceRef.current.add(c.candidate);
-        try {
-          await pcRef.current.addIceCandidate(
-            new RTCIceCandidate({
-              candidate: c.candidate,
-              sdpMid: c.sdpMid,
-              sdpMLineIndex: c.sdpMLineIndex,
-            })
-          );
-        } catch {
-          /* ignore */
-        }
+  const applyRemoteIce = useCallback(async (list) => {
+    if (!list?.length) return;
+    for (const c of list) {
+      if (!c?.candidate) continue;
+      if (appliedIceRef.current.has(c.candidate)) continue;
+      if (!remoteDescSetRef.current || !pcRef.current) {
+        pendingIceRef.current.push(c);
+        continue;
       }
-    },
-    []
-  );
+      appliedIceRef.current.add(c.candidate);
+      try {
+        await pcRef.current.addIceCandidate(
+          new RTCIceCandidate({
+            candidate: c.candidate,
+            sdpMid: c.sdpMid,
+            sdpMLineIndex: c.sdpMLineIndex,
+          })
+        );
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
 
   const handleSignal = useCallback(
     async (c) => {
@@ -267,7 +286,6 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
       callIdRef.current = c.id;
       const iAmCaller = c.callerUsername === user.username;
 
-      // Wait until callee accepts before creating WebRTC offer (avoids stale ICE)
       if (iAmCaller && (c.status === 'accepted' || c.status === 'active') && !offerSentRef.current) {
         if (busyRef.current) return;
         busyRef.current = true;
@@ -276,10 +294,7 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
           const pc = await ensurePc(c.mode);
           if (!offerSentRef.current) {
             offerSentRef.current = true;
-            const offer = await pc.createOffer({
-              offerToReceiveAudio: true,
-              offerToReceiveVideo: c.mode === 'video',
-            });
+            const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
             await api('/api/call', {
               method: 'PATCH',
@@ -289,13 +304,11 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
         } catch (err) {
           offerSentRef.current = false;
           setError(err.message || 'Allow microphone access to call');
-          setPhase('');
         } finally {
           busyRef.current = false;
         }
       }
 
-      // Callee answers after accept when offer is ready
       if (!iAmCaller && (c.status === 'accepted' || c.status === 'active') && c.offer?.sdp && !answerSentRef.current) {
         if (busyRef.current) return;
         busyRef.current = true;
@@ -303,7 +316,9 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
         try {
           const pc = await ensurePc(c.mode);
           if (!remoteDescSetRef.current) {
-            await pc.setRemoteDescription(new RTCSessionDescription({ type: c.offer.type || 'offer', sdp: c.offer.sdp }));
+            await pc.setRemoteDescription(
+              new RTCSessionDescription({ type: c.offer.type || 'offer', sdp: c.offer.sdp })
+            );
             remoteDescSetRef.current = true;
             await flushPendingIce();
           }
@@ -320,13 +335,11 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
           answerSentRef.current = false;
           remoteDescSetRef.current = false;
           setError(err.message || 'Allow microphone access to answer');
-          setPhase('');
         } finally {
           busyRef.current = false;
         }
       }
 
-      // Caller applies answer
       if (iAmCaller && c.answer?.sdp && pcRef.current && !remoteDescSetRef.current) {
         try {
           await pcRef.current.setRemoteDescription(
@@ -339,9 +352,7 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
         }
       }
 
-      // Exchange ICE
-      const remoteIce = iAmCaller ? c.calleeIce : c.callerIce;
-      await applyRemoteIce(remoteIce);
+      await applyRemoteIce(iAmCaller ? c.calleeIce : c.callerIce);
     },
     [applyRemoteIce, ensurePc, flushPendingIce, user.username]
   );
@@ -367,7 +378,7 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
       }
     };
     tick();
-    const t = setInterval(tick, 500);
+    const t = setInterval(tick, 400);
     return () => {
       alive = false;
       clearInterval(t);
@@ -384,19 +395,22 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
 
   useEffect(() => () => cleanupMedia(), [cleanupMedia]);
 
-  // Re-attach local preview when video element mounts in overlay
   useEffect(() => {
+    if (!call) return;
     if (localVideoRef.current && localStreamRef.current) {
       localVideoRef.current.srcObject = localStreamRef.current;
       localVideoRef.current.muted = true;
       localVideoRef.current.play().catch(() => {});
     }
-  }, [call?.mode, call?.status]);
+    if (remoteStreamRef.current) attachRemoteStream(remoteStreamRef.current);
+  }, [call, attachRemoteStream]);
 
   async function startCall(mode) {
     setError('');
     setPhase('calling');
     try {
+      // Unlock mic permission on the click gesture
+      await ensurePc(mode);
       const data = await api('/api/call', {
         method: 'POST',
         body: JSON.stringify({ mode }),
@@ -407,6 +421,7 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
     } catch (err) {
       setError(err.message || 'Could not start call');
       setPhase('');
+      cleanupMedia();
     }
   }
 
@@ -415,10 +430,8 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
     setError('');
     setPhase('connecting');
     try {
-      // Unlock audio playback with this user gesture
-      if (remoteAudioRef.current) {
-        remoteAudioRef.current.play().catch(() => {});
-      }
+      await ensurePc(call.mode);
+      await playRemote();
       const data = await api('/api/call', {
         method: 'PATCH',
         body: JSON.stringify({ id: call.id, action: 'accept' }),
@@ -483,13 +496,11 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
 
   const statusLabel = incoming
     ? 'Incoming call…'
-    : phase === 'connected' || call?.status === 'active'
+    : phase === 'connected'
       ? 'Connected'
       : phase === 'calling' || call?.status === 'ringing'
-        ? 'Calling…'
-        : phase === 'connecting'
-          ? 'Connecting…'
-          : 'Connecting…';
+        ? 'Ringing…'
+        : 'Connecting…';
 
   return (
     <>
@@ -513,9 +524,6 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
           Video
         </button>
       </div>
-
-      {/* Always in DOM so autoplay unlock + audio works */}
-      <audio ref={remoteAudioRef} autoPlay playsInline controls={false} className="pointer-events-none fixed h-px w-px opacity-0" />
 
       {inCall && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#0a1210]/90 p-4 backdrop-blur-sm">
@@ -557,7 +565,19 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
                 </div>
               )}
 
+              {/* Keep audio element in the overlay (not opacity-0) so browsers actually play sound */}
+              <audio ref={remoteAudioRef} autoPlay playsInline className="mt-3 w-full max-w-xs" controls={needGesture} />
+
               {isVideo && <p className="mt-3 m-0 text-center text-sm text-white/70">{statusLabel}</p>}
+              {needGesture && (
+                <button
+                  type="button"
+                  onClick={playRemote}
+                  className="mt-3 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[var(--ink)]"
+                >
+                  Tap to hear audio
+                </button>
+              )}
               {error && <p className="mt-2 m-0 text-center text-sm text-red-300">{error}</p>}
             </div>
 

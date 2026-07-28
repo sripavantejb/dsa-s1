@@ -1441,7 +1441,7 @@ export default function TrackerApp() {
                           ))}
                         </div>
                       )}
-                      <div className={`absolute -bottom-2 ${mine ? 'left-0' : 'right-0'} hidden gap-1 group-hover:flex`}>
+                      <div className={`mt-1.5 flex flex-wrap gap-1 ${mine ? 'justify-end' : 'justify-start'}`}>
                         <button
                           type="button"
                           onClick={() => setReactMenuId(reactMenuId === m.id ? null : m.id)}
