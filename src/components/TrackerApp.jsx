@@ -142,10 +142,29 @@ export default function TrackerApp() {
   const [busyId, setBusyId] = useState(null);
   const [people, setPeople] = useState([]);
   const [feed, setFeed] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [chatDraft, setChatDraft] = useState('');
+  const [chatSending, setChatSending] = useState(false);
+  const [unreadChat, setUnreadChat] = useState(0);
   const sinceRef = useRef(null);
+  const chatSinceRef = useRef(null);
   const seenToastIds = useRef(new Set());
+  const seenChatIds = useRef(new Set());
+  const chatEndRef = useRef(null);
+  const tabRef = useRef(tab);
+
+  useEffect(() => {
+    tabRef.current = tab;
+    if (tab === 'chat') setUnreadChat(0);
+  }, [tab]);
 
   const solvedSet = useMemo(() => new Set(solved), [solved]);
+
+  useEffect(() => {
+    if (tab === 'chat') {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, tab]);
 
   function applyProgress(progress) {
     setSolved(progress.solved || []);
@@ -175,16 +194,20 @@ export default function TrackerApp() {
   }, []);
 
   const loadAll = useCallback(async () => {
-    const [qs, progress, act] = await Promise.all([
+    const [qs, progress, act, chat] = await Promise.all([
       api('/api/questions'),
       api('/api/progress'),
       api('/api/activity'),
+      api('/api/chat'),
     ]);
     setQuestions(qs.questions);
     applyProgress(progress);
     setFeed(act.activities || []);
     sinceRef.current = act.serverTime || new Date().toISOString();
     for (const a of act.activities || []) seenToastIds.current.add(a.id);
+    setMessages(chat.messages || []);
+    chatSinceRef.current = chat.serverTime || new Date().toISOString();
+    for (const m of chat.messages || []) seenChatIds.current.add(m.id);
     await loadBoard();
     await loadPresence();
   }, [loadBoard, loadPresence]);
@@ -263,10 +286,40 @@ export default function TrackerApp() {
     };
     const activityTimer = setInterval(poll, 3500);
 
+    const pollChat = async () => {
+      try {
+        const q = chatSinceRef.current ? `?since=${encodeURIComponent(chatSinceRef.current)}` : '';
+        const data = await api(`/api/chat${q}`);
+        const incoming = data.messages || [];
+        if (incoming.length) {
+          setMessages((prev) => {
+            const map = new Map(prev.map((m) => [m.id, m]));
+            for (const m of incoming) map.set(m.id, m);
+            return [...map.values()].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+          });
+          for (const m of incoming) {
+            if (seenChatIds.current.has(m.id)) continue;
+            seenChatIds.current.add(m.id);
+            if (m.username !== user.username) {
+              if (tabRef.current !== 'chat') {
+                setUnreadChat((n) => n + 1);
+                toast.info(`${m.displayName}: ${m.text.slice(0, 80)}`, { toastId: `chat-${m.id}` });
+              }
+            }
+          }
+        }
+        if (data.serverTime) chatSinceRef.current = data.serverTime;
+      } catch {
+        /* ignore */
+      }
+    };
+    const chatTimer = setInterval(pollChat, 2500);
+
     return () => {
       clearInterval(presenceTimer);
       clearInterval(presenceRefresh);
       clearInterval(activityTimer);
+      clearInterval(chatTimer);
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('focus', beat);
     };
@@ -282,7 +335,10 @@ export default function TrackerApp() {
     setUser(u);
     setBooting(true);
     seenToastIds.current = new Set();
+    seenChatIds.current = new Set();
     sinceRef.current = null;
+    chatSinceRef.current = null;
+    setUnreadChat(0);
     try {
       await loadAll();
     } finally {
@@ -298,6 +354,34 @@ export default function TrackerApp() {
     setBoard(null);
     setPeople([]);
     setFeed([]);
+    setMessages([]);
+    setChatDraft('');
+    setUnreadChat(0);
+  }
+
+  async function sendChat(e) {
+    e?.preventDefault?.();
+    const text = chatDraft.trim();
+    if (!text || chatSending) return;
+    setChatSending(true);
+    try {
+      const data = await api('/api/chat', {
+        method: 'POST',
+        body: JSON.stringify({ text }),
+      });
+      setChatDraft('');
+      if (data.message) {
+        seenChatIds.current.add(data.message.id);
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === data.message.id)) return prev;
+          return [...prev, data.message];
+        });
+      }
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setChatSending(false);
+    }
   }
 
   async function toggle(qid) {
@@ -407,6 +491,18 @@ export default function TrackerApp() {
               onClick={() => setTab('live')}
             >
               Live
+            </button>
+            <button
+              type="button"
+              className={`relative rounded-lg px-3.5 py-1.5 text-sm font-semibold ${tab === 'chat' ? 'bg-white text-[var(--ink)] shadow-sm' : 'text-[var(--muted)]'}`}
+              onClick={() => setTab('chat')}
+            >
+              Chat
+              {unreadChat > 0 && tab !== 'chat' && (
+                <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--accent)] px-1 font-mono text-[0.6rem] text-white">
+                  {unreadChat > 9 ? '9+' : unreadChat}
+                </span>
+              )}
             </button>
           </nav>
         </div>
@@ -683,6 +779,55 @@ export default function TrackerApp() {
                 </div>
               ))}
             </div>
+          </section>
+        )}
+
+        {tab === 'chat' && (
+          <section className="flex min-h-[70vh] flex-col rounded-[18px] border border-[var(--line)] bg-white shadow-[var(--shadow)]">
+            <div className="border-b border-[var(--line)] px-4 py-3">
+              <h2 className="m-0 text-xl font-bold tracking-tight">Chat</h2>
+              <p className="m-0 mt-1 text-sm text-[var(--muted)]">Tej ↔ Hafsa — messages update live for both of you.</p>
+            </div>
+            <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+              {messages.length === 0 && (
+                <p className="py-12 text-center text-[var(--muted)]">No messages yet. Say hi and start the grind talk.</p>
+              )}
+              {messages.map((m) => {
+                const mine = m.username === user.username;
+                return (
+                  <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                      className={`max-w-[min(520px,85%)] rounded-2xl px-3.5 py-2.5 ${
+                        mine ? 'rounded-br-md bg-[var(--accent)] text-white' : 'rounded-bl-md bg-[#eef4f0] text-[var(--ink)]'
+                      }`}
+                    >
+                      {!mine && <p className="m-0 mb-1 text-xs font-semibold capitalize opacity-80">{m.displayName}</p>}
+                      <p className="m-0 whitespace-pre-wrap break-words text-sm leading-relaxed">{m.text}</p>
+                      <p className={`m-0 mt-1 font-mono text-[0.65rem] ${mine ? 'text-white/70' : 'text-[var(--muted)]'}`}>
+                        {timeAgo(m.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={chatEndRef} />
+            </div>
+            <form onSubmit={sendChat} className="flex gap-2 border-t border-[var(--line)] p-3">
+              <input
+                value={chatDraft}
+                onChange={(e) => setChatDraft(e.target.value)}
+                placeholder="Type a message…"
+                maxLength={2000}
+                className="flex-1 rounded-[10px] border border-[var(--line)] bg-[#fbfdfc] px-3 py-2.5 outline-none focus:border-[var(--accent)]"
+              />
+              <button
+                type="submit"
+                disabled={chatSending || !chatDraft.trim()}
+                className="rounded-[10px] bg-[var(--accent)] px-4 py-2.5 font-semibold text-white hover:bg-[#0c6541] disabled:opacity-50"
+              >
+                {chatSending ? '…' : 'Send'}
+              </button>
+            </form>
           </section>
         )}
 
