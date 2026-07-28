@@ -4,6 +4,7 @@ import { ensureSeeded } from '@/lib/seed';
 import { getAuthUser } from '@/lib/auth';
 import Question from '@/lib/models/Question.js';
 import Activity from '@/lib/models/Activity.js';
+import { notifyPartner } from '@/lib/notify';
 
 /** Log that the user opened / attempted a question */
 export async function POST(req) {
@@ -35,6 +36,12 @@ export async function POST(req) {
         title: question.title,
         topic: question.topic,
         action: 'attempted',
+      });
+      await notifyPartner(user, {
+        type: 'attempted',
+        title: `${user.displayName} attempted a question`,
+        body: question.title,
+        linkTab: 'sheet',
       });
     }
 

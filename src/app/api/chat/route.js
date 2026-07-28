@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/mongodb';
 import { ensureSeeded } from '@/lib/seed';
 import { getAuthUser } from '@/lib/auth';
 import Message from '@/lib/models/Message.js';
+import { notifyPartner } from '@/lib/notify';
 
 function serialize(m) {
   return {
@@ -58,6 +59,13 @@ export async function POST(req) {
       username: user.username,
       displayName: user.displayName,
       text,
+    });
+
+    await notifyPartner(user, {
+      type: 'chat',
+      title: `Message from ${user.displayName}`,
+      body: text.slice(0, 120),
+      linkTab: 'chat',
     });
 
     return NextResponse.json({ message: serialize(msg) });

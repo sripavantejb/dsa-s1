@@ -21,12 +21,23 @@ function actionLabel(action) {
   return action;
 }
 
-function toastForActivity(a) {
-  const verb = actionLabel(a.action);
-  const msg = `${a.displayName} ${verb} “${a.title}”`;
-  if (a.action === 'finished') toast.success(msg, { toastId: a.id });
-  else if (a.action === 'attempted') toast.info(msg, { toastId: a.id });
-  else toast.warn(msg, { toastId: a.id });
+function popBrowserNotification(title, body) {
+  if (typeof window === 'undefined' || !('Notification' in window)) return;
+  if (Notification.permission === 'granted') {
+    try {
+      new Notification(title, { body, icon: '/favicon.ico' });
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+function notifToast(n) {
+  const msg = `${n.title}: ${n.body}`;
+  if (n.type === 'finished' || n.type === 'streak' || n.type === 'code') toast.success(msg, { toastId: n.id });
+  else if (n.type === 'chat' || n.type === 'attempted') toast.info(msg, { toastId: n.id });
+  else toast.warn(msg, { toastId: n.id });
+  popBrowserNotification(n.title, n.body);
 }
 
 function timeAgo(iso) {
@@ -148,6 +159,9 @@ export default function TrackerApp() {
   const [unreadChat, setUnreadChat] = useState(0);
   const [snippets, setSnippets] = useState([]);
   const [unreadCode, setUnreadCode] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [notifUnread, setNotifUnread] = useState(0);
+  const [notifOpen, setNotifOpen] = useState(false);
   const [codeTitle, setCodeTitle] = useState('');
   const [codeLang, setCodeLang] = useState('cpp');
   const [codeBody, setCodeBody] = useState('');
@@ -158,11 +172,14 @@ export default function TrackerApp() {
   const sinceRef = useRef(null);
   const chatSinceRef = useRef(null);
   const codeSinceRef = useRef(null);
+  const notifSinceRef = useRef(null);
   const seenToastIds = useRef(new Set());
   const seenChatIds = useRef(new Set());
   const seenCodeIds = useRef(new Set());
+  const seenNotifIds = useRef(new Set());
   const chatEndRef = useRef(null);
   const tabRef = useRef(tab);
+  const notifPanelRef = useRef(null);
 
   useEffect(() => {
     tabRef.current = tab;
@@ -177,6 +194,17 @@ export default function TrackerApp() {
       chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, tab]);
+
+  useEffect(() => {
+    if (!notifOpen) return undefined;
+    const onDown = (e) => {
+      if (notifPanelRef.current && !notifPanelRef.current.contains(e.target)) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [notifOpen]);
 
   function applyProgress(progress) {
     setSolved(progress.solved || []);
@@ -206,12 +234,13 @@ export default function TrackerApp() {
   }, []);
 
   const loadAll = useCallback(async () => {
-    const [qs, progress, act, chat, code] = await Promise.all([
+    const [qs, progress, act, chat, code, notifs] = await Promise.all([
       api('/api/questions'),
       api('/api/progress'),
       api('/api/activity'),
       api('/api/chat'),
       api('/api/code'),
+      api('/api/notifications'),
     ]);
     setQuestions(qs.questions);
     applyProgress(progress);
@@ -224,6 +253,10 @@ export default function TrackerApp() {
     setSnippets([...(code.snippets || [])].reverse());
     codeSinceRef.current = code.serverTime || new Date().toISOString();
     for (const s of code.snippets || []) seenCodeIds.current.add(s.id);
+    setNotifications(notifs.notifications || []);
+    setNotifUnread(notifs.unread || 0);
+    notifSinceRef.current = notifs.serverTime || new Date().toISOString();
+    for (const n of notifs.notifications || []) seenNotifIds.current.add(n.id);
     await loadBoard();
     await loadPresence();
   }, [loadBoard, loadPresence]);
@@ -289,9 +322,8 @@ export default function TrackerApp() {
           for (const a of incoming) {
             if (seenToastIds.current.has(a.id)) continue;
             seenToastIds.current.add(a.id);
-            if (a.username !== user.username) {
-              toastForActivity(a);
-              if (a.action === 'finished' || a.action === 'reopened') loadBoard();
+            if (a.username !== user.username && (a.action === 'finished' || a.action === 'reopened')) {
+              loadBoard();
             }
           }
         }
@@ -316,11 +348,8 @@ export default function TrackerApp() {
           for (const m of incoming) {
             if (seenChatIds.current.has(m.id)) continue;
             seenChatIds.current.add(m.id);
-            if (m.username !== user.username) {
-              if (tabRef.current !== 'chat') {
-                setUnreadChat((n) => n + 1);
-                toast.info(`${m.displayName}: ${m.text.slice(0, 80)}`, { toastId: `chat-${m.id}` });
-              }
+            if (m.username !== user.username && tabRef.current !== 'chat') {
+              setUnreadChat((n) => n + 1);
             }
           }
         }
@@ -345,11 +374,8 @@ export default function TrackerApp() {
           for (const s of incoming) {
             if (seenCodeIds.current.has(s.id)) continue;
             seenCodeIds.current.add(s.id);
-            if (s.username !== user.username) {
-              if (tabRef.current !== 'code') {
-                setUnreadCode((n) => n + 1);
-                toast.info(`${s.displayName} shared code: ${s.title}`, { toastId: `code-${s.id}` });
-              }
+            if (s.username !== user.username && tabRef.current !== 'code') {
+              setUnreadCode((n) => n + 1);
             }
           }
         }
@@ -360,12 +386,38 @@ export default function TrackerApp() {
     };
     const codeTimer = setInterval(pollCode, 4000);
 
+    const pollNotifs = async () => {
+      try {
+        const q = notifSinceRef.current ? `?since=${encodeURIComponent(notifSinceRef.current)}` : '';
+        const data = await api(`/api/notifications${q}`);
+        const incoming = data.notifications || [];
+        if (incoming.length) {
+          setNotifications((prev) => {
+            const map = new Map(prev.map((n) => [n.id, n]));
+            for (const n of incoming) map.set(n.id, n);
+            return [...map.values()].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 50);
+          });
+          for (const n of incoming) {
+            if (seenNotifIds.current.has(n.id)) continue;
+            seenNotifIds.current.add(n.id);
+            notifToast(n);
+          }
+        }
+        if (typeof data.unread === 'number') setNotifUnread(data.unread);
+        if (data.serverTime) notifSinceRef.current = data.serverTime;
+      } catch {
+        /* ignore */
+      }
+    };
+    const notifTimer = setInterval(pollNotifs, 3000);
+
     return () => {
       clearInterval(presenceTimer);
       clearInterval(presenceRefresh);
       clearInterval(activityTimer);
       clearInterval(chatTimer);
       clearInterval(codeTimer);
+      clearInterval(notifTimer);
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('focus', beat);
     };
@@ -383,11 +435,17 @@ export default function TrackerApp() {
     seenToastIds.current = new Set();
     seenChatIds.current = new Set();
     seenCodeIds.current = new Set();
+    seenNotifIds.current = new Set();
     sinceRef.current = null;
     chatSinceRef.current = null;
     codeSinceRef.current = null;
+    notifSinceRef.current = null;
     setUnreadChat(0);
     setUnreadCode(0);
+    setNotifUnread(0);
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
     try {
       await loadAll();
     } finally {
@@ -405,9 +463,33 @@ export default function TrackerApp() {
     setFeed([]);
     setMessages([]);
     setSnippets([]);
+    setNotifications([]);
     setChatDraft('');
     setUnreadChat(0);
     setUnreadCode(0);
+    setNotifUnread(0);
+    setNotifOpen(false);
+  }
+
+  async function markNotifsRead(id) {
+    try {
+      const data = await api('/api/notifications', {
+        method: 'PATCH',
+        body: JSON.stringify(id ? { id } : {}),
+      });
+      setNotifUnread(data.unread || 0);
+      setNotifications((prev) =>
+        prev.map((n) => (id ? (n.id === id ? { ...n, read: true } : n) : { ...n, read: true }))
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function openNotification(n) {
+    markNotifsRead(n.id);
+    setNotifOpen(false);
+    if (n.linkTab) setTab(n.linkTab);
   }
 
   async function sendChat(e) {
@@ -622,6 +704,61 @@ export default function TrackerApp() {
           </nav>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <div className="relative" ref={notifPanelRef}>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !notifOpen;
+                setNotifOpen(next);
+                if (next && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+                  Notification.requestPermission().catch(() => {});
+                }
+              }}
+              className="relative rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--ink)]"
+              aria-label="Notifications"
+            >
+              Alerts
+              {notifUnread > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--accent)] px-1 font-mono text-[0.6rem] text-white">
+                  {notifUnread > 9 ? '9+' : notifUnread}
+                </span>
+              )}
+            </button>
+            {notifOpen && (
+              <div className="absolute right-0 z-40 mt-2 w-[min(380px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-[var(--line)] bg-white shadow-[var(--shadow)]">
+                <div className="flex items-center justify-between border-b border-[var(--line)] px-3 py-2.5">
+                  <p className="m-0 text-sm font-bold">Notifications</p>
+                  <button
+                    type="button"
+                    onClick={() => markNotifsRead()}
+                    className="text-xs font-semibold text-[var(--accent)]"
+                  >
+                    Mark all read
+                  </button>
+                </div>
+                <div className="max-h-[420px] overflow-y-auto">
+                  {notifications.length === 0 && (
+                    <p className="px-3 py-8 text-center text-sm text-[var(--muted)]">No notifications yet.</p>
+                  )}
+                  {notifications.map((n) => (
+                    <button
+                      key={n.id}
+                      type="button"
+                      onClick={() => openNotification(n)}
+                      className={`block w-full border-b border-[var(--line)] px-3 py-3 text-left hover:bg-[#f7faf8] ${n.read ? 'opacity-70' : 'bg-[#f1faf5]'}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="m-0 text-sm font-semibold text-[var(--ink)]">{n.title}</p>
+                        {!n.read && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[var(--accent)]" />}
+                      </div>
+                      <p className="mt-1 mb-0 text-sm text-[var(--muted)]">{n.body}</p>
+                      <p className="mt-1 mb-0 font-mono text-[0.65rem] text-[var(--muted)]">{timeAgo(n.createdAt)}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {people.map((p) => {
               const meta = statusMeta(p.status || (p.online ? 'active' : 'offline'));

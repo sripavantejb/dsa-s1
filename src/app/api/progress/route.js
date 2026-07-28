@@ -5,6 +5,7 @@ import { getAuthUser } from '@/lib/auth';
 import { DAILY_GOAL, progressPayload, recordFinish, recordReopen } from '@/lib/streak';
 import Question from '@/lib/models/Question.js';
 import Activity from '@/lib/models/Activity.js';
+import { notifyPartner } from '@/lib/notify';
 
 export async function GET() {
   try {
@@ -60,10 +61,24 @@ export async function POST(req) {
     if (action === 'finished') {
       if (progress.todayComplete && progress.todayRawCount === DAILY_GOAL) {
         toastHint = `Daily goal hit! ${DAILY_GOAL}/8 done — streak day counted.`;
+        await notifyPartner(user, {
+          type: 'streak',
+          title: 'Daily goal complete',
+          body: `${user.displayName} finished ${DAILY_GOAL} questions today`,
+          linkTab: 'live',
+        });
       } else if (!progress.todayComplete) {
         toastHint = `Today ${progress.todayRawCount}/${DAILY_GOAL} toward streak`;
       }
     }
+
+    const verb = action === 'finished' ? 'finished' : action === 'reopened' ? 'reopened' : action;
+    await notifyPartner(user, {
+      type: action,
+      title: `${user.displayName} ${verb} a question`,
+      body: question.title,
+      linkTab: 'sheet',
+    });
 
     return NextResponse.json({
       ...progress,

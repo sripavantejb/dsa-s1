@@ -4,6 +4,7 @@ import { ensureSeeded } from '@/lib/seed';
 import { getAuthUser } from '@/lib/auth';
 import SharedCode from '@/lib/models/SharedCode.js';
 import Question from '@/lib/models/Question.js';
+import { notifyPartner } from '@/lib/notify';
 
 const LANGS = new Set(['cpp', 'java', 'python', 'javascript', 'c', 'other']);
 
@@ -92,6 +93,13 @@ export async function POST(req) {
       qid,
       questionTitle,
       topic,
+    });
+
+    await notifyPartner(user, {
+      type: 'code',
+      title: `${user.displayName} shared code`,
+      body: title,
+      linkTab: 'code',
     });
 
     return NextResponse.json({ snippet: serialize(doc) });
