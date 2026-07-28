@@ -2,6 +2,7 @@
 
 const AVATARS = {
   hafsa: '/avatars/hafsa.png',
+  tej: '/avatars/tej.png',
 };
 
 export function SnapAvatar({ username, size = 40, className = '' }) {
