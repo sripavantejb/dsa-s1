@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node scripts/quality-test.mjs",
+    "test:local": "BASE_URL=http://localhost:3000 node scripts/quality-test.mjs"
   },
   "dependencies": {
     "@next/eslint-plugin-next": "^16.2.11",

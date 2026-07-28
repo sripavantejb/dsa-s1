@@ -154,9 +154,29 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
 
   const flushPendingIce = useCallback(async () => {
     const pc = pcRef.current;
+    // Flush locally gathered ICE that waited for call id
+    if (callIdRef.current) {
+      const localQueued = pendingIceRef.current.filter((c) => c._local);
+      pendingIceRef.current = pendingIceRef.current.filter((c) => !c._local);
+      for (const c of localQueued) {
+        api('/api/call', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            id: callIdRef.current,
+            action: 'ice',
+            candidate: {
+              candidate: c.candidate,
+              sdpMid: c.sdpMid,
+              sdpMLineIndex: c.sdpMLineIndex,
+            },
+          }),
+        }).catch(() => {});
+      }
+    }
     if (!pc || !remoteDescSetRef.current) return;
     const queued = pendingIceRef.current.splice(0);
     for (const c of queued) {
+      if (c._local) continue;
       const key = c.candidate;
       if (!key || appliedIceRef.current.has(key)) continue;
       appliedIceRef.current.add(key);
@@ -206,17 +226,23 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
       };
 
       pc.onicecandidate = (ev) => {
-        if (!ev.candidate || !callIdRef.current) return;
+        if (!ev.candidate) return;
+        const entry = {
+          candidate: ev.candidate.candidate,
+          sdpMid: ev.candidate.sdpMid,
+          sdpMLineIndex: ev.candidate.sdpMLineIndex,
+        };
+        if (!callIdRef.current) {
+          // Queue until call id exists
+          pendingIceRef.current.push({ ...entry, _local: true });
+          return;
+        }
         api('/api/call', {
           method: 'PATCH',
           body: JSON.stringify({
             id: callIdRef.current,
             action: 'ice',
-            candidate: {
-              candidate: ev.candidate.candidate,
-              sdpMid: ev.candidate.sdpMid,
-              sdpMLineIndex: ev.candidate.sdpMLineIndex,
-            },
+            candidate: entry,
           }),
         }).catch(() => {});
       };
@@ -300,6 +326,7 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
               method: 'PATCH',
               body: JSON.stringify({ id: c.id, action: 'offer', type: offer.type, sdp: offer.sdp }),
             });
+            await flushPendingIce();
           }
         } catch (err) {
           offerSentRef.current = false;
@@ -330,6 +357,7 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
               method: 'PATCH',
               body: JSON.stringify({ id: c.id, action: 'answer', type: answer.type, sdp: answer.sdp }),
             });
+            await flushPendingIce();
           }
         } catch (err) {
           answerSentRef.current = false;
@@ -409,7 +437,8 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
     setError('');
     setPhase('calling');
     try {
-      // Unlock mic permission on the click gesture
+      // Always start fresh so a previous failed call can't poison WebRTC
+      cleanupMedia();
       await ensurePc(mode);
       const data = await api('/api/call', {
         method: 'POST',
@@ -417,6 +446,7 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
       });
       setCall(data.call);
       callIdRef.current = data.call.id;
+      await flushPendingIce();
       await handleSignal(data.call);
     } catch (err) {
       setError(err.message || 'Could not start call');
@@ -430,13 +460,15 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
     setError('');
     setPhase('connecting');
     try {
-      await ensurePc(call.mode);
+      if (!pcRef.current) await ensurePc(call.mode);
       await playRemote();
       const data = await api('/api/call', {
         method: 'PATCH',
         body: JSON.stringify({ id: call.id, action: 'accept' }),
       });
       setCall(data.call);
+      callIdRef.current = data.call.id;
+      await flushPendingIce();
       await handleSignal(data.call);
     } catch (err) {
       setError(err.message || 'Could not accept');
