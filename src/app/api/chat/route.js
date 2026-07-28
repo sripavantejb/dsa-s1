@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/mongodb';
 import { ensureSeeded } from '@/lib/seed';
 import { getAuthUser } from '@/lib/auth';
 import Message from '@/lib/models/Message.js';
+import ChatSettings, { getChatSettings } from '@/lib/models/ChatSettings.js';
 import { notifyPartner } from '@/lib/notify';
 
 const ALLOWED_EMOJIS = new Set(['❤️', '👍', '😂', '🔥', '💯', '😮', '😢', '👏']);
@@ -32,6 +33,20 @@ function serialize(m) {
   };
 }
 
+function settingsView(s) {
+  return {
+    disappearingOnSeen: !!s.disappearingOnSeen,
+  };
+}
+
+async function purgeSeenIfNeeded(settings) {
+  if (!settings.disappearingOnSeen) return 0;
+  // Keep just-seen messages readable briefly, then wipe for both
+  const cutoff = new Date(Date.now() - 8_000);
+  const res = await Message.deleteMany({ seenAt: { $ne: null, $lte: cutoff } });
+  return res.deletedCount || 0;
+}
+
 export async function GET(req) {
   try {
     await connectDB();
@@ -41,12 +56,17 @@ export async function GET(req) {
 
     const { searchParams } = new URL(req.url);
     const markSeen = searchParams.get('markSeen') === '1';
+    const settings = await getChatSettings();
 
     if (markSeen) {
       await Message.updateMany(
         { username: { $ne: user.username }, seenAt: null },
         { $set: { seenAt: new Date() } }
       );
+      await purgeSeenIfNeeded(settings);
+    } else if (settings.disappearingOnSeen) {
+      // Partner may have marked your messages seen — drop them on poll
+      await purgeSeenIfNeeded(settings);
     }
 
     const messages = await Message.find().sort({ createdAt: -1 }).limit(100).lean();
@@ -54,6 +74,7 @@ export async function GET(req) {
 
     return NextResponse.json({
       messages: list.map(serialize),
+      settings: settingsView(settings),
       serverTime: new Date().toISOString(),
     });
   } catch (err) {
@@ -102,7 +123,8 @@ export async function POST(req) {
       linkTab: 'chat',
     });
 
-    return NextResponse.json({ message: serialize(msg) });
+    const settings = await getChatSettings();
+    return NextResponse.json({ message: serialize(msg), settings: settingsView(settings) });
   } catch (err) {
     console.error(err);
     return NextResponse.json({ message: 'Failed to send' }, { status: 500 });
@@ -117,6 +139,28 @@ export async function PATCH(req) {
     if (!user) return NextResponse.json({ message: 'Login required' }, { status: 401 });
 
     const body = await req.json();
+
+    // Chat settings toggles
+    if (body.action === 'settings') {
+      const updates = {};
+      if (typeof body.disappearingOnSeen === 'boolean') {
+        updates.disappearingOnSeen = body.disappearingOnSeen;
+      }
+      const settings = await ChatSettings.findOneAndUpdate(
+        { key: 'main' },
+        { $set: updates, $setOnInsert: { key: 'main' } },
+        { upsert: true, new: true }
+      );
+
+      // If just enabled, wipe anything already seen
+      if (settings.disappearingOnSeen) {
+        await purgeSeenIfNeeded(settings);
+      }
+
+      return NextResponse.json({ settings: settingsView(settings) });
+    }
+
+    // Reactions
     const id = String(body.id || '');
     const emoji = String(body.emoji || '');
     if (!id || !ALLOWED_EMOJIS.has(emoji)) {
@@ -140,6 +184,34 @@ export async function PATCH(req) {
     return NextResponse.json({ message: serialize(msg.toObject()) });
   } catch (err) {
     console.error(err);
-    return NextResponse.json({ message: 'Failed to react' }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to update' }, { status: 500 });
+  }
+}
+
+export async function DELETE() {
+  try {
+    await connectDB();
+    await ensureSeeded();
+    const user = await getAuthUser();
+    if (!user) return NextResponse.json({ message: 'Login required' }, { status: 401 });
+
+    const res = await Message.deleteMany({});
+    await notifyPartner(user, {
+      type: 'chat',
+      title: `${user.displayName} cleared the chat`,
+      body: 'Chat history was wiped',
+      linkTab: 'chat',
+    });
+
+    const settings = await getChatSettings();
+    return NextResponse.json({
+      ok: true,
+      deleted: res.deletedCount || 0,
+      settings: settingsView(settings),
+      messages: [],
+    });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ message: 'Failed to clear chat' }, { status: 500 });
   }
 }

@@ -188,8 +188,12 @@ export default function TrackerApp() {
   const [unreadChat, setUnreadChat] = useState(0);
   const [replyTo, setReplyTo] = useState(null);
   const [reactMenuId, setReactMenuId] = useState(null);
+  const [chatSettings, setChatSettings] = useState({ disappearingOnSeen: false });
+  const [chatSettingsOpen, setChatSettingsOpen] = useState(false);
+  const [clearingChat, setClearingChat] = useState(false);
   const chatDraftRef = useRef('');
   const typingClearRef = useRef(null);
+  const chatSettingsRef = useRef(null);
   const [snippets, setSnippets] = useState([]);
   const [unreadCode, setUnreadCode] = useState(0);
   const [notifications, setNotifications] = useState([]);
@@ -221,9 +225,12 @@ export default function TrackerApp() {
       api('/api/chat?markSeen=1')
         .then((data) => {
           setMessages(data.messages || []);
+          if (data.settings) setChatSettings(data.settings);
           if (data.serverTime) chatSinceRef.current = data.serverTime;
         })
         .catch(() => {});
+    } else {
+      setChatSettingsOpen(false);
     }
     if (tab === 'code') setUnreadCode(0);
   }, [tab]);
@@ -246,6 +253,17 @@ export default function TrackerApp() {
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
   }, [notifOpen]);
+
+  useEffect(() => {
+    if (!chatSettingsOpen) return undefined;
+    const onDown = (e) => {
+      if (chatSettingsRef.current && !chatSettingsRef.current.contains(e.target)) {
+        setChatSettingsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [chatSettingsOpen]);
 
   function applyProgress(progress) {
     setSolved(progress.solved || []);
@@ -289,6 +307,7 @@ export default function TrackerApp() {
     sinceRef.current = act.serverTime || new Date().toISOString();
     for (const a of act.activities || []) seenToastIds.current.add(a.id);
     setMessages(chat.messages || []);
+    if (chat.settings) setChatSettings(chat.settings);
     chatSinceRef.current = chat.serverTime || new Date().toISOString();
     for (const m of chat.messages || []) seenChatIds.current.add(m.id);
     setSnippets([...(code.snippets || [])].reverse());
@@ -390,6 +409,7 @@ export default function TrackerApp() {
           prevIds.add(m.id);
         }
         setMessages(list);
+        if (data.settings) setChatSettings(data.settings);
         if (data.serverTime) chatSinceRef.current = data.serverTime;
       } catch {
         /* ignore */
@@ -568,6 +588,42 @@ export default function TrackerApp() {
       setReactMenuId(null);
     } catch (err) {
       toast.error(err.message);
+    }
+  }
+
+  async function toggleDisappearing(next) {
+    try {
+      const data = await api('/api/chat', {
+        method: 'PATCH',
+        body: JSON.stringify({ action: 'settings', disappearingOnSeen: next }),
+      });
+      if (data.settings) setChatSettings(data.settings);
+      const mark = tabRef.current === 'chat' ? '?markSeen=1' : '';
+      const chat = await api(`/api/chat${mark}`);
+      setMessages(chat.messages || []);
+      if (chat.settings) setChatSettings(chat.settings);
+    } catch (err) {
+      toast.error(err.message);
+    }
+  }
+
+  async function clearChat() {
+    if (clearingChat) return;
+    if (!window.confirm('Clear the entire chat for both of you? This cannot be undone.')) return;
+    setClearingChat(true);
+    try {
+      const data = await api('/api/chat', { method: 'DELETE' });
+      setMessages([]);
+      seenChatIds.current = new Set();
+      setUnreadChat(0);
+      setReplyTo(null);
+      setReactMenuId(null);
+      if (data.settings) setChatSettings(data.settings);
+      setChatSettingsOpen(false);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setClearingChat(false);
     }
   }
 
@@ -1122,30 +1178,80 @@ export default function TrackerApp() {
 
         {tab === 'chat' && (
           <section className="flex min-h-[70vh] flex-col overflow-hidden rounded-[18px] border border-[var(--line)] bg-white shadow-[var(--shadow)]">
-            <div className="flex items-center gap-3 border-b border-[var(--line)] px-4 py-3">
-              {(() => {
-                const partner = people.find((p) => !p.isYou) || { username: user.username === 'tej' ? 'hafsa' : 'tej', displayName: user.username === 'tej' ? 'Hafsa' : 'Tej', typing: false, status: 'offline' };
-                const meta = statusMeta(partner.status || 'offline');
-                return (
-                  <>
-                    <div className="relative">
-                      <SnapAvatar username={partner.username} size={48} className="avatar-pop" />
-                      <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white ${meta.dot}`} />
+            <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3">
+              <div className="flex min-w-0 items-center gap-3">
+                {(() => {
+                  const partner = people.find((p) => !p.isYou) || { username: user.username === 'tej' ? 'hafsa' : 'tej', displayName: user.username === 'tej' ? 'Hafsa' : 'Tej', typing: false, status: 'offline' };
+                  const meta = statusMeta(partner.status || 'offline');
+                  return (
+                    <>
+                      <div className="relative">
+                        <SnapAvatar username={partner.username} size={48} className="avatar-pop" />
+                        <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white ${meta.dot}`} />
+                      </div>
+                      <div className="min-w-0">
+                        <h2 className="m-0 text-xl font-bold tracking-tight capitalize">{partner.displayName}</h2>
+                        <p className="m-0 text-sm text-[var(--muted)]">
+                          {partner.typing ? (
+                            <span className="typing-dots text-[var(--accent)] font-semibold">typing</span>
+                          ) : (
+                            meta.label
+                          )}
+                          {partner.timeToday ? ` · ${partner.timeToday} today` : ''}
+                          {chatSettings.disappearingOnSeen ? ' · vanish on seen' : ''}
+                        </p>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+              <div className="relative" ref={chatSettingsRef}>
+                <button
+                  type="button"
+                  onClick={() => setChatSettingsOpen((o) => !o)}
+                  className="rounded-[10px] border border-[var(--line)] px-3 py-2 text-sm font-semibold text-[var(--muted)] hover:bg-[#fbfdfc]"
+                  aria-label="Chat settings"
+                >
+                  Settings
+                </button>
+                {chatSettingsOpen && (
+                  <div className="absolute right-0 top-full z-20 mt-2 w-72 rounded-xl border border-[var(--line)] bg-white p-3 shadow-[var(--shadow)]">
+                    <p className="m-0 mb-3 text-xs font-semibold uppercase tracking-[0.06em] text-[var(--muted)]">Chat toggles</p>
+                    <div className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-[var(--line)] bg-[#fbfdfc] px-3 py-2.5">
+                      <span>
+                        <span className="block text-sm font-semibold text-[var(--ink)]">Disappearing on seen</span>
+                        <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                          Messages vanish for both a few seconds after they’re read
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={chatSettings.disappearingOnSeen}
+                        onClick={() => toggleDisappearing(!chatSettings.disappearingOnSeen)}
+                        className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors ${
+                          chatSettings.disappearingOnSeen ? 'bg-[var(--accent)]' : 'bg-slate-300'
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                            chatSettings.disappearingOnSeen ? 'translate-x-5' : ''
+                          }`}
+                        />
+                      </button>
                     </div>
-                    <div>
-                      <h2 className="m-0 text-xl font-bold tracking-tight capitalize">{partner.displayName}</h2>
-                      <p className="m-0 text-sm text-[var(--muted)]">
-                        {partner.typing ? (
-                          <span className="typing-dots text-[var(--accent)] font-semibold">typing</span>
-                        ) : (
-                          meta.label
-                        )}
-                        {partner.timeToday ? ` · ${partner.timeToday} today` : ''}
-                      </p>
-                    </div>
-                  </>
-                );
-              })()}
+                    <button
+                      type="button"
+                      onClick={clearChat}
+                      disabled={clearingChat || messages.length === 0}
+                      className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                    >
+                      {clearingChat ? 'Clearing…' : 'Clear chat'}
+                    </button>
+                    <p className="mb-0 mt-2 text-[0.7rem] text-[var(--muted)]">Clear wipes history for both of you.</p>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex-1 space-y-3 overflow-y-auto bg-[linear-gradient(180deg,#f7faf8_0%,#eef4f0_100%)] px-4 py-4">
               {messages.length === 0 && (
@@ -1176,6 +1282,11 @@ export default function TrackerApp() {
                         {!mine && <p className="m-0 mb-1 text-xs font-semibold capitalize opacity-80">{m.displayName}</p>}
                         <p className="m-0 whitespace-pre-wrap break-words text-sm leading-relaxed">{m.text}</p>
                         <p className={`m-0 mt-1 flex items-center justify-end gap-0.5 font-mono text-[0.65rem] ${mine ? 'text-white/70' : 'text-[var(--muted)]'}`}>
+                          {chatSettings.disappearingOnSeen && (
+                            <span className="mr-1" title="Disappears when seen" aria-label="Disappears when seen">
+                              ◌
+                            </span>
+                          )}
                           <span>{timeAgo(m.createdAt)}</span>
                           {mine && <ReadTicks seen={!!m.seen} />}
                         </p>
