@@ -545,114 +545,173 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
         ? 'Ringing…'
         : 'Connecting…';
 
+  const controlBtn = (label, onClick, bg, color = '#fff') => (
+    <button
+      key={label}
+      type="button"
+      onClick={onClick}
+      style={{
+        minWidth: 100,
+        borderRadius: 999,
+        border: 'none',
+        background: bg,
+        color,
+        padding: '16px 24px',
+        fontSize: 16,
+        fontWeight: 800,
+        cursor: 'pointer',
+        boxShadow: '0 10px 28px rgba(0,0,0,0.4)',
+      }}
+    >
+      {label}
+    </button>
+  );
+
   const overlay =
     inCall && mounted
       ? createPortal(
-          <div className="fixed inset-0 z-[200] flex items-end justify-center bg-[#0a1210]/92 p-3 pb-6 backdrop-blur-sm sm:items-center sm:p-4">
-            <div className="relative flex max-h-[min(920px,100dvh-1.5rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#12201a] shadow-2xl">
-              <div className="flex shrink-0 items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[0.7rem] font-semibold text-emerald-300">
-                    <LockIcon /> E2E encrypted
-                  </span>
-                  {pcState && <span className="font-mono text-[0.65rem] text-white/35">{pcState}</span>}
-                </div>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Call"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 2147483000,
+              display: 'flex',
+              flexDirection: 'column',
+              background: 'rgba(10, 18, 16, 0.95)',
+            }}
+          >
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '24px 16px 140px',
+                overflow: 'auto',
+              }}
+            >
+              <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    borderRadius: 999,
+                    background: 'rgba(16,185,129,0.18)',
+                    color: '#6ee7b7',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    padding: '5px 12px',
+                  }}
+                >
+                  <LockIcon /> E2E encrypted
+                </span>
                 {phase === 'connected' && (
-                  <span className="font-mono text-sm text-white/70">{formatCallTime(elapsed)}</span>
+                  <span style={{ fontFamily: 'monospace', color: 'rgba(255,255,255,0.75)', fontSize: 14 }}>
+                    {formatCallTime(elapsed)}
+                  </span>
                 )}
               </div>
 
-              <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-4">
-                {isVideo ? (
-                  <>
-                    <video
-                      ref={remoteVideoRef}
-                      autoPlay
-                      playsInline
-                      className="h-[220px] w-full rounded-xl bg-black object-cover sm:h-[280px]"
-                    />
-                    <video
-                      ref={localVideoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="absolute bottom-4 right-4 h-24 w-16 rounded-xl border border-white/20 bg-black object-cover shadow-lg sm:bottom-6 sm:right-6 sm:h-28 sm:w-20"
-                    />
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center gap-3 py-6">
-                    <SnapAvatar username={partnerUser} size={96} className="avatar-pop ring-2 ring-white/20" />
-                    <p className="m-0 text-xl font-bold capitalize text-white">{partnerName}</p>
-                    <p className="m-0 text-sm text-white/60">{statusLabel}</p>
-                  </div>
-                )}
+              {isVideo ? (
+                <div style={{ position: 'relative', width: '100%', maxWidth: 480 }}>
+                  <video
+                    ref={remoteVideoRef}
+                    autoPlay
+                    playsInline
+                    style={{ width: '100%', height: 260, borderRadius: 16, background: '#000', objectFit: 'cover' }}
+                  />
+                  <video
+                    ref={localVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    style={{
+                      position: 'absolute',
+                      right: 12,
+                      bottom: 12,
+                      width: 88,
+                      height: 120,
+                      borderRadius: 12,
+                      background: '#000',
+                      objectFit: 'cover',
+                      border: '1px solid rgba(255,255,255,0.25)',
+                    }}
+                  />
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                  <SnapAvatar username={partnerUser} size={110} className="avatar-pop" />
+                  <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#fff', textTransform: 'capitalize' }}>
+                    {partnerName}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 15, color: 'rgba(255,255,255,0.7)' }}>{statusLabel}</p>
+                </div>
+              )}
 
-                <audio ref={remoteAudioRef} autoPlay playsInline className="mt-3 w-full max-w-xs" controls={needGesture} />
+              <audio
+                ref={remoteAudioRef}
+                autoPlay
+                playsInline
+                style={{ marginTop: 18, width: 'min(100%, 280px)' }}
+                controls={needGesture}
+              />
 
-                {isVideo && <p className="mt-3 m-0 text-center text-sm text-white/70">{statusLabel}</p>}
-                {needGesture && (
-                  <button
-                    type="button"
-                    onClick={playRemote}
-                    className="mt-3 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[var(--ink)]"
-                  >
-                    Tap to hear audio
-                  </button>
-                )}
-                {error && <p className="mt-2 m-0 text-center text-sm text-red-300">{error}</p>}
-              </div>
+              {needGesture && (
+                <button
+                  type="button"
+                  onClick={playRemote}
+                  style={{
+                    marginTop: 12,
+                    borderRadius: 999,
+                    background: '#fff',
+                    color: '#14201b',
+                    border: 'none',
+                    padding: '12px 18px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Tap to hear audio
+                </button>
+              )}
+              {error && <p style={{ marginTop: 12, color: '#fca5a5', fontSize: 14, textAlign: 'center' }}>{error}</p>}
+            </div>
 
-              {/* Always pinned at bottom of the card so End/Mute never get clipped */}
-              <div className="flex shrink-0 items-center justify-center gap-3 border-t border-white/10 bg-[#0d1814] px-4 py-4">
-                {incoming ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={declineCall}
-                      className="min-w-[7rem] rounded-full bg-red-500 px-5 py-3.5 text-sm font-bold text-white hover:bg-red-600"
-                    >
-                      Decline
-                    </button>
-                    <button
-                      type="button"
-                      onClick={acceptCall}
-                      className="min-w-[7rem] rounded-full bg-emerald-500 px-5 py-3.5 text-sm font-bold text-white hover:bg-emerald-600"
-                    >
-                      Accept
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={toggleMute}
-                      className={`min-w-[5.5rem] rounded-full px-4 py-3.5 text-sm font-bold ${
-                        muted ? 'bg-white text-[var(--ink)]' : 'bg-white/15 text-white hover:bg-white/25'
-                      }`}
-                    >
-                      {muted ? 'Unmute' : 'Mute'}
-                    </button>
-                    {isVideo && (
-                      <button
-                        type="button"
-                        onClick={toggleCam}
-                        className={`min-w-[5.5rem] rounded-full px-4 py-3.5 text-sm font-bold ${
-                          camOff ? 'bg-white text-[var(--ink)]' : 'bg-white/15 text-white hover:bg-white/25'
-                        }`}
-                      >
-                        {camOff ? 'Cam on' : 'Cam off'}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={hangup}
-                      className="min-w-[5.5rem] rounded-full bg-red-500 px-5 py-3.5 text-sm font-bold text-white hover:bg-red-600"
-                    >
-                      End
-                    </button>
-                  </>
-                )}
-              </div>
+            <div
+              style={{
+                position: 'fixed',
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 2147483001,
+                display: 'flex',
+                justifyContent: 'center',
+                flexWrap: 'wrap',
+                gap: 12,
+                padding: '18px 16px calc(18px + env(safe-area-inset-bottom, 0px))',
+                background: 'rgba(8,14,12,0.96)',
+                borderTop: '1px solid rgba(255,255,255,0.12)',
+              }}
+            >
+              {incoming ? (
+                <>
+                  {controlBtn('Decline', declineCall, '#ef4444')}
+                  {controlBtn('Accept', acceptCall, '#10b981')}
+                </>
+              ) : (
+                <>
+                  {controlBtn(muted ? 'Unmute' : 'Mute', toggleMute, muted ? '#fff' : 'rgba(255,255,255,0.2)', muted ? '#14201b' : '#fff')}
+                  {isVideo
+                    ? controlBtn(camOff ? 'Cam on' : 'Cam off', toggleCam, camOff ? '#fff' : 'rgba(255,255,255,0.2)', camOff ? '#14201b' : '#fff')
+                    : null}
+                  {controlBtn('End', hangup, '#ef4444')}
+                </>
+              )}
             </div>
           </div>,
           document.body
@@ -666,7 +725,7 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
           type="button"
           onClick={() => startCall('audio')}
           disabled={!!inCall}
-          className="rounded-[10px] border border-[var(--line)] px-2.5 py-2 text-sm font-semibold text-[var(--muted)] hover:bg-[#fbfdfc] disabled:opacity-40"
+          className="rounded-[10px] border border-[var(--line)] bg-white px-2.5 py-2 text-sm font-semibold text-[var(--muted)] hover:bg-[#fbfdfc] disabled:opacity-40"
           title="Voice call · end-to-end encrypted"
         >
           Call
@@ -675,7 +734,7 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
           type="button"
           onClick={() => startCall('video')}
           disabled={!!inCall}
-          className="rounded-[10px] border border-[var(--line)] px-2.5 py-2 text-sm font-semibold text-[var(--muted)] hover:bg-[#fbfdfc] disabled:opacity-40"
+          className="rounded-[10px] border border-[var(--line)] bg-white px-2.5 py-2 text-sm font-semibold text-[var(--muted)] hover:bg-[#fbfdfc] disabled:opacity-40"
           title="Video call · end-to-end encrypted"
         >
           Video
