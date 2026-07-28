@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { SnapAvatar } from './SnapAvatar';
 
 /** Multiple STUN/TURN so calls connect across Wi‑Fi / mobile NATs */
@@ -56,6 +57,11 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
   const [phase, setPhase] = useState('');
   const [pcState, setPcState] = useState('');
   const [needGesture, setNeedGesture] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const pcRef = useRef(null);
   const localStreamRef = useRef(null);
@@ -424,14 +430,18 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
   useEffect(() => () => cleanupMedia(), [cleanupMedia]);
 
   useEffect(() => {
-    if (!call) return;
-    if (localVideoRef.current && localStreamRef.current) {
-      localVideoRef.current.srcObject = localStreamRef.current;
-      localVideoRef.current.muted = true;
-      localVideoRef.current.play().catch(() => {});
-    }
-    if (remoteStreamRef.current) attachRemoteStream(remoteStreamRef.current);
-  }, [call, attachRemoteStream]);
+    if (!call || !mounted || !inCall) return;
+    // Portal just mounted — rebind media elements
+    const t = requestAnimationFrame(() => {
+      if (localVideoRef.current && localStreamRef.current) {
+        localVideoRef.current.srcObject = localStreamRef.current;
+        localVideoRef.current.muted = true;
+        localVideoRef.current.play().catch(() => {});
+      }
+      if (remoteStreamRef.current) attachRemoteStream(remoteStreamRef.current);
+    });
+    return () => cancelAnimationFrame(t);
+  }, [call, mounted, inCall, attachRemoteStream]);
 
   async function startCall(mode) {
     setError('');
@@ -534,6 +544,120 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
         ? 'Ringing…'
         : 'Connecting…';
 
+  const overlay =
+    inCall && mounted
+      ? createPortal(
+          <div className="fixed inset-0 z-[200] flex items-end justify-center bg-[#0a1210]/92 p-3 pb-6 backdrop-blur-sm sm:items-center sm:p-4">
+            <div className="relative flex max-h-[min(920px,100dvh-1.5rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#12201a] shadow-2xl">
+              <div className="flex shrink-0 items-center justify-between px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[0.7rem] font-semibold text-emerald-300">
+                    <LockIcon /> E2E encrypted
+                  </span>
+                  {pcState && <span className="font-mono text-[0.65rem] text-white/35">{pcState}</span>}
+                </div>
+                {phase === 'connected' && (
+                  <span className="font-mono text-sm text-white/70">{formatCallTime(elapsed)}</span>
+                )}
+              </div>
+
+              <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-4">
+                {isVideo ? (
+                  <>
+                    <video
+                      ref={remoteVideoRef}
+                      autoPlay
+                      playsInline
+                      className="h-[220px] w-full rounded-xl bg-black object-cover sm:h-[280px]"
+                    />
+                    <video
+                      ref={localVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="absolute bottom-4 right-4 h-24 w-16 rounded-xl border border-white/20 bg-black object-cover shadow-lg sm:bottom-6 sm:right-6 sm:h-28 sm:w-20"
+                    />
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center gap-3 py-6">
+                    <SnapAvatar username={partnerUser} size={96} className="avatar-pop ring-2 ring-white/20" />
+                    <p className="m-0 text-xl font-bold capitalize text-white">{partnerName}</p>
+                    <p className="m-0 text-sm text-white/60">{statusLabel}</p>
+                  </div>
+                )}
+
+                <audio ref={remoteAudioRef} autoPlay playsInline className="mt-3 w-full max-w-xs" controls={needGesture} />
+
+                {isVideo && <p className="mt-3 m-0 text-center text-sm text-white/70">{statusLabel}</p>}
+                {needGesture && (
+                  <button
+                    type="button"
+                    onClick={playRemote}
+                    className="mt-3 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[var(--ink)]"
+                  >
+                    Tap to hear audio
+                  </button>
+                )}
+                {error && <p className="mt-2 m-0 text-center text-sm text-red-300">{error}</p>}
+              </div>
+
+              {/* Always pinned at bottom of the card so End/Mute never get clipped */}
+              <div className="flex shrink-0 items-center justify-center gap-3 border-t border-white/10 bg-[#0d1814] px-4 py-4">
+                {incoming ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={declineCall}
+                      className="min-w-[7rem] rounded-full bg-red-500 px-5 py-3.5 text-sm font-bold text-white hover:bg-red-600"
+                    >
+                      Decline
+                    </button>
+                    <button
+                      type="button"
+                      onClick={acceptCall}
+                      className="min-w-[7rem] rounded-full bg-emerald-500 px-5 py-3.5 text-sm font-bold text-white hover:bg-emerald-600"
+                    >
+                      Accept
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={toggleMute}
+                      className={`min-w-[5.5rem] rounded-full px-4 py-3.5 text-sm font-bold ${
+                        muted ? 'bg-white text-[var(--ink)]' : 'bg-white/15 text-white hover:bg-white/25'
+                      }`}
+                    >
+                      {muted ? 'Unmute' : 'Mute'}
+                    </button>
+                    {isVideo && (
+                      <button
+                        type="button"
+                        onClick={toggleCam}
+                        className={`min-w-[5.5rem] rounded-full px-4 py-3.5 text-sm font-bold ${
+                          camOff ? 'bg-white text-[var(--ink)]' : 'bg-white/15 text-white hover:bg-white/25'
+                        }`}
+                      >
+                        {camOff ? 'Cam on' : 'Cam off'}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={hangup}
+                      className="min-w-[5.5rem] rounded-full bg-red-500 px-5 py-3.5 text-sm font-bold text-white hover:bg-red-600"
+                    >
+                      End
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+      : null;
+
   return (
     <>
       <div className={`flex items-center gap-1.5 ${startButtonsClassName}`}>
@@ -556,116 +680,7 @@ export function CallController({ user, partner, startButtonsClassName = '' }) {
           Video
         </button>
       </div>
-
-      {inCall && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#0a1210]/90 p-4 backdrop-blur-sm">
-          <div className="relative flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#12201a] shadow-2xl">
-            <div className="flex items-center justify-between px-4 py-3">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[0.7rem] font-semibold text-emerald-300">
-                  <LockIcon /> E2E encrypted
-                </span>
-                {pcState && <span className="font-mono text-[0.65rem] text-white/35">{pcState}</span>}
-              </div>
-              {phase === 'connected' && (
-                <span className="font-mono text-sm text-white/70">{formatCallTime(elapsed)}</span>
-              )}
-            </div>
-
-            <div className="relative flex min-h-[280px] flex-col items-center justify-center px-4 pb-4">
-              {isVideo ? (
-                <>
-                  <video
-                    ref={remoteVideoRef}
-                    autoPlay
-                    playsInline
-                    className="h-[280px] w-full rounded-xl bg-black object-cover"
-                  />
-                  <video
-                    ref={localVideoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="absolute bottom-6 right-6 h-28 w-20 rounded-xl border border-white/20 bg-black object-cover shadow-lg"
-                  />
-                </>
-              ) : (
-                <div className="flex flex-col items-center gap-3 py-8">
-                  <SnapAvatar username={partnerUser} size={96} className="avatar-pop ring-2 ring-white/20" />
-                  <p className="m-0 text-xl font-bold capitalize text-white">{partnerName}</p>
-                  <p className="m-0 text-sm text-white/60">{statusLabel}</p>
-                </div>
-              )}
-
-              {/* Keep audio element in the overlay (not opacity-0) so browsers actually play sound */}
-              <audio ref={remoteAudioRef} autoPlay playsInline className="mt-3 w-full max-w-xs" controls={needGesture} />
-
-              {isVideo && <p className="mt-3 m-0 text-center text-sm text-white/70">{statusLabel}</p>}
-              {needGesture && (
-                <button
-                  type="button"
-                  onClick={playRemote}
-                  className="mt-3 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[var(--ink)]"
-                >
-                  Tap to hear audio
-                </button>
-              )}
-              {error && <p className="mt-2 m-0 text-center text-sm text-red-300">{error}</p>}
-            </div>
-
-            <div className="flex items-center justify-center gap-3 border-t border-white/10 bg-black/20 px-4 py-4">
-              {incoming ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={declineCall}
-                    className="rounded-full bg-red-500 px-5 py-3 text-sm font-semibold text-white hover:bg-red-600"
-                  >
-                    Decline
-                  </button>
-                  <button
-                    type="button"
-                    onClick={acceptCall}
-                    className="rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-600"
-                  >
-                    Accept
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={toggleMute}
-                    className={`rounded-full px-4 py-3 text-sm font-semibold ${
-                      muted ? 'bg-white text-[var(--ink)]' : 'bg-white/15 text-white hover:bg-white/25'
-                    }`}
-                  >
-                    {muted ? 'Unmute' : 'Mute'}
-                  </button>
-                  {isVideo && (
-                    <button
-                      type="button"
-                      onClick={toggleCam}
-                      className={`rounded-full px-4 py-3 text-sm font-semibold ${
-                        camOff ? 'bg-white text-[var(--ink)]' : 'bg-white/15 text-white hover:bg-white/25'
-                      }`}
-                    >
-                      {camOff ? 'Cam on' : 'Cam off'}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={hangup}
-                    className="rounded-full bg-red-500 px-5 py-3 text-sm font-semibold text-white hover:bg-red-600"
-                  >
-                    End
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {overlay}
     </>
   );
 }
