@@ -5,6 +5,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { SnapAvatar } from './SnapAvatar';
 import { CallController } from './CallPanel';
+import { RevisionPanel, revisionBadgeToneClass } from './RevisionPanel';
 
 const REACTION_EMOJIS = ['❤️', '👍', '😂', '🔥', '💯', '😮', '😢', '👏'];
 
@@ -217,6 +218,9 @@ export default function TrackerApp() {
   const [status, setStatus] = useState('all');
   const [diff, setDiff] = useState('all');
   const [busyId, setBusyId] = useState(null);
+  const [revision, setRevision] = useState(null);
+  const [revisionLoading, setRevisionLoading] = useState(false);
+  const [revisionBusyId, setRevisionBusyId] = useState(null);
   const [people, setPeople] = useState([]);
   const [feed, setFeed] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -347,14 +351,27 @@ export default function TrackerApp() {
     }
   }, []);
 
+  const loadRevision = useCallback(async () => {
+    setRevisionLoading(true);
+    try {
+      const data = await api('/api/revision');
+      setRevision(data);
+    } catch {
+      /* ignore */
+    } finally {
+      setRevisionLoading(false);
+    }
+  }, []);
+
   const loadAll = useCallback(async () => {
-    const [qs, progress, act, chat, code, notifs] = await Promise.all([
+    const [qs, progress, act, chat, code, notifs, rev] = await Promise.all([
       api('/api/questions'),
       api('/api/progress'),
       api('/api/activity'),
       api('/api/chat'),
       api('/api/code'),
       api('/api/notifications'),
+      api('/api/revision').catch(() => null),
     ]);
     setQuestions(qs.questions);
     applyProgress(progress);
@@ -372,6 +389,7 @@ export default function TrackerApp() {
     setNotifUnread(notifs.unread || 0);
     notifSinceRef.current = notifs.serverTime || new Date().toISOString();
     for (const n of notifs.notifications || []) seenNotifIds.current.add(n.id);
+    if (rev) setRevision(rev);
     await loadBoard();
     await loadPresence();
   }, [loadBoard, loadPresence]);
@@ -811,9 +829,15 @@ export default function TrackerApp() {
       });
       applyProgress(data);
       loadBoard();
-      if (data.toastHint) toast.success(data.toastHint);
-      else if (data.action === 'finished') toast.success('Marked as finished');
-      else if (data.action === 'reopened') toast.info('Marked as todo again');
+      if (data.action === 'finished') {
+        loadRevision();
+        if (data.toastHint) toast.success(data.toastHint);
+        else toast.success('Marked as finished · added to revision');
+      } else if (data.action === 'reopened') {
+        toast.info('Marked as todo again');
+      } else if (data.toastHint) {
+        toast.success(data.toastHint);
+      }
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -824,6 +848,78 @@ export default function TrackerApp() {
   async function openQuestion(q) {
     api('/api/activity', { method: 'POST', body: JSON.stringify({ qid: q.qid }) }).catch(() => {});
     if (q.link) window.open(q.link, '_blank', 'noopener,noreferrer');
+  }
+
+  async function reviseItem(id) {
+    setRevisionBusyId(id);
+    try {
+      const data = await api('/api/revision', {
+        method: 'PATCH',
+        body: JSON.stringify({ id, action: 'revise' }),
+      });
+      setRevision(data);
+      toast.success('Revised — next week scheduled');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setRevisionBusyId(null);
+    }
+  }
+
+  async function resetRevisionItem(id) {
+    setRevisionBusyId(id);
+    try {
+      const data = await api('/api/revision', {
+        method: 'PATCH',
+        body: JSON.stringify({ id, action: 'reset' }),
+      });
+      setRevision(data);
+      toast.info('Revision schedule reset');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setRevisionBusyId(null);
+    }
+  }
+
+  async function enableRevisionTracking(payload) {
+    const data = await api('/api/revision', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'migrate', ...payload }),
+    });
+    setRevision(data);
+    toast.success(`Tracking enabled for ${data.created || 0} problem(s)`);
+  }
+
+  async function addManualRevision(fields) {
+    const data = await api('/api/revision', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'manual',
+        title: fields.title,
+        platform: fields.platform,
+        link: fields.link,
+        topic: fields.topic,
+        difficulty: fields.difficulty,
+        notes: fields.notes,
+        dateSolved: fields.dateSolved,
+        track: true,
+      }),
+    });
+    setRevision(data);
+    toast.success('External problem added to revision');
+  }
+
+  function openRevisionItem(item) {
+    if (item.link) {
+      window.open(item.link, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    if (item.qid) {
+      const q = questions.find((x) => x.qid === item.qid);
+      if (q) openQuestion(q);
+      else setTab('sheet');
+    }
   }
 
   const topics = useMemo(() => {
@@ -896,6 +992,21 @@ export default function TrackerApp() {
               onClick={() => setTab('sheet')}
             >
               Sheet
+            </button>
+            <button
+              type="button"
+              className={`relative rounded-lg px-3.5 py-1.5 text-sm font-semibold ${tab === 'revise' ? 'bg-white text-[var(--ink)] shadow-sm' : 'text-[var(--muted)]'}`}
+              onClick={() => {
+                setTab('revise');
+                loadRevision();
+              }}
+            >
+              Revise
+              {(revision?.today?.revisionsDue || 0) > 0 && tab !== 'revise' && (
+                <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#b54708] px-1 font-mono text-[0.6rem] text-white">
+                  {revision.today.revisionsDue > 9 ? '9+' : revision.today.revisionsDue}
+                </span>
+              )}
             </button>
             <button
               type="button"
@@ -1039,7 +1150,7 @@ export default function TrackerApp() {
             : 'mx-auto w-[min(1100px,calc(100%-2rem))] py-6 pb-12'
         }
       >
-        {tab !== 'chat' && (
+        {tab !== 'chat' && tab !== 'revise' && (
           <>
         <section className="mb-4 rounded-[18px] border border-[var(--line)] bg-white p-4 shadow-[var(--shadow)] animate-rise">
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -1167,6 +1278,7 @@ export default function TrackerApp() {
               {filtered.length === 0 && <p className="py-10 text-center text-[var(--muted)]">No questions match your filters.</p>}
               {filtered.map((q) => {
                 const done = solvedSet.has(q.qid);
+                const rev = revision?.byQid?.[q.qid];
                 return (
                   <div
                     key={q.qid}
@@ -1201,6 +1313,29 @@ export default function TrackerApp() {
                         >
                           {q.difficulty}
                         </span>
+                        {done && !rev && (
+                          <span className="rounded-md bg-[#e0f2fe] px-1.5 py-0.5 font-mono text-[0.68rem] font-semibold text-[#0369a1]">
+                            Solved
+                          </span>
+                        )}
+                        {done && rev && (
+                          <>
+                            <span className="rounded-md bg-[#d8f3e6] px-1.5 py-0.5 font-mono text-[0.68rem] font-semibold text-[var(--easy)]">
+                              Solved · Tracking
+                            </span>
+                            {rev.badge && (
+                              <span
+                                className={`rounded-md px-1.5 py-0.5 font-mono text-[0.68rem] font-semibold ${revisionBadgeToneClass(rev.badge.tone)}`}
+                              >
+                                {rev.status === 'overdue'
+                                  ? `Overdue · Week ${rev.stage}`
+                                  : rev.status === 'due_today'
+                                    ? `Due today · Week ${rev.stage}`
+                                    : `Next ${new Date(rev.nextRevisionAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+                              </span>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
                     {q.link ? (
@@ -1219,6 +1354,21 @@ export default function TrackerApp() {
               })}
             </div>
           </section>
+        )}
+
+        {tab === 'revise' && (
+          <RevisionPanel
+            revision={revision}
+            loading={revisionLoading}
+            busyId={revisionBusyId}
+            onRefresh={loadRevision}
+            onRevise={reviseItem}
+            onReset={resetRevisionItem}
+            onEnableTracking={enableRevisionTracking}
+            onAddManual={addManualRevision}
+            onOpenItem={openRevisionItem}
+            questionsByQid={null}
+          />
         )}
 
         {tab === 'live' && (

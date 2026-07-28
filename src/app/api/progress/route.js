@@ -6,6 +6,7 @@ import { DAILY_GOAL, progressPayload, recordFinish, recordReopen } from '@/lib/s
 import Question from '@/lib/models/Question.js';
 import Activity from '@/lib/models/Activity.js';
 import { notifyPartner } from '@/lib/notify';
+import { ensureRevisionForSolved } from '@/lib/revision';
 
 export async function GET() {
   try {
@@ -56,6 +57,16 @@ export async function POST(req) {
       action,
     });
 
+    let revision = null;
+    if (action === 'finished') {
+      // Auto-add to revision tracker (no-op if already tracked — no duplicates)
+      try {
+        revision = await ensureRevisionForSolved(user.username, question, new Date());
+      } catch (revErr) {
+        console.error('revision auto-track failed', revErr);
+      }
+    }
+
     const progress = progressPayload(user);
     let toastHint = null;
     if (action === 'finished') {
@@ -68,7 +79,9 @@ export async function POST(req) {
           linkTab: 'live',
         });
       } else if (!progress.todayComplete) {
-        toastHint = `Today ${progress.todayRawCount}/${DAILY_GOAL} toward streak`;
+        toastHint = `Today ${progress.todayRawCount}/${DAILY_GOAL} toward streak · added to revision`;
+      } else {
+        toastHint = 'Marked as finished · added to revision';
       }
     }
 
@@ -84,6 +97,7 @@ export async function POST(req) {
       ...progress,
       action,
       toastHint,
+      revisionId: revision?._id ? String(revision._id) : null,
     });
   } catch (err) {
     console.error(err);
