@@ -1053,21 +1053,23 @@ export default function TrackerApp() {
                 return (
                   <div key={p.username} className="rounded-xl border border-[var(--line)] bg-[#fbfdfc] px-4 py-3">
                     <div className="flex items-center justify-between gap-3">
-                    <div className="relative">
-                      <SnapAvatar username={p.username} size={44} className="avatar-pop" />
-                      <span
-                        className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white ${
-                          p.status === 'active' ? 'bg-emerald-500' : p.status === 'idle' ? 'bg-amber-400' : 'bg-slate-300'
-                        }`}
-                      />
-                    </div>
-                    <div>
-                      <p className="m-0 text-lg font-bold capitalize">{p.displayName}</p>
-                      <p className="m-0 text-sm text-[var(--muted)]">
-                        {p.isYou ? 'That’s you' : p.typing ? 'typing…' : 'Partner'}
-                      </p>
-                    </div>
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${meta.className}`}>{meta.label}</span>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="relative shrink-0">
+                          <SnapAvatar username={p.username} size={44} className="avatar-pop" />
+                          <span
+                            className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white ${
+                              p.status === 'active' ? 'bg-emerald-500' : p.status === 'idle' ? 'bg-amber-400' : 'bg-slate-300'
+                            }`}
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="m-0 text-lg font-bold capitalize">{p.displayName}</p>
+                          <p className="m-0 text-sm text-[var(--muted)]">
+                            {p.isYou ? 'That’s you' : p.typing ? 'typing…' : 'Partner'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${meta.className}`}>{meta.label}</span>
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-2 border-t border-[var(--line)] pt-3">
                       <div>
