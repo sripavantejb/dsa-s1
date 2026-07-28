@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { SnapAvatar } from './SnapAvatar';
+import { CallController } from './CallPanel';
 
 const REACTION_EMOJIS = ['❤️', '👍', '😂', '🔥', '💯', '😮', '😢', '👏'];
 
@@ -39,7 +40,8 @@ function notifToast(n) {
   // Chat stays in the Alerts panel count only — no toast text
   if (n.type === 'chat') return;
   const msg = `${n.title}: ${n.body}`;
-  if (n.type === 'finished' || n.type === 'streak' || n.type === 'code') toast.success(msg, { toastId: n.id });
+  if (n.type === 'call') toast.info(msg, { toastId: n.id, autoClose: 8000 });
+  else if (n.type === 'finished' || n.type === 'streak' || n.type === 'code') toast.success(msg, { toastId: n.id });
   else if (n.type === 'attempted') toast.info(msg, { toastId: n.id });
   else toast.warn(msg, { toastId: n.id });
   popBrowserNotification(n.title, n.body);
@@ -1011,6 +1013,13 @@ export default function TrackerApp() {
                 </div>
               );
             })}
+            <CallController
+              user={user}
+              partner={people.find((p) => !p.isYou) || {
+                username: user.username === 'tej' ? 'hafsa' : 'tej',
+                displayName: user.username === 'tej' ? 'Hafsa' : 'Tej',
+              }}
+            />
           </div>
           <span className="font-mono text-sm font-medium">{user.displayName}</span>
           <button
@@ -1330,7 +1339,11 @@ export default function TrackerApp() {
                   );
                 })()}
               </div>
-              <div className="relative" ref={chatSettingsRef}>
+              <div className="flex shrink-0 items-center gap-2">
+                <p className="hidden text-[0.65rem] font-semibold text-emerald-700 sm:block" title="Calls use WebRTC DTLS-SRTP">
+                  🔒 E2E calls
+                </p>
+                <div className="relative" ref={chatSettingsRef}>
                 <button
                   type="button"
                   onClick={() => setChatSettingsOpen((o) => !o)}
@@ -1371,6 +1384,7 @@ export default function TrackerApp() {
                     <p className="mb-0 mt-2 text-[0.7rem] text-[var(--muted)]">Clear wipes history for both of you.</p>
                   </div>
                 )}
+                </div>
               </div>
             </div>
             <div ref={chatScrollRef} className="chat-shell-messages">
