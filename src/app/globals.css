@@ -105,3 +105,32 @@ body {
   animation: typingPulse 1.2s infinite;
 }
 
+/* WhatsApp-style fixed chat card — messages scroll inside, page never grows */
+.chat-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.chat-shell-top {
+  flex: 0 0 auto;
+}
+
+.chat-shell-messages {
+  flex: 1 1 auto;
+  height: 0; /* force flex child to take remaining space and scroll */
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: linear-gradient(180deg, #f7faf8 0%, #eef4f0 100%);
+}
+

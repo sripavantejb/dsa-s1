@@ -280,6 +280,15 @@ export default function TrackerApp() {
   const solvedSet = useMemo(() => new Set(solved), [solved]);
 
   useEffect(() => {
+    if (tab !== 'chat') return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [tab]);
+
+  useEffect(() => {
     if (tab !== 'chat') return;
     const box = chatScrollRef.current;
     if (box) {
@@ -862,7 +871,7 @@ export default function TrackerApp() {
   if (!user) return <Login onLogin={handleLogin} />;
 
   return (
-    <div className={tab === 'chat' ? 'h-dvh overflow-hidden' : 'min-h-screen'}>
+    <div className={tab === 'chat' ? 'flex h-[100dvh] flex-col overflow-hidden' : 'min-h-screen'}>
       <ToastContainer
         position="top-right"
         autoClose={4500}
@@ -871,7 +880,11 @@ export default function TrackerApp() {
         theme="light"
         toastClassName="!font-[Outfit] !rounded-xl !text-sm"
       />
-      <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-4 border-b border-[var(--line)] bg-white/85 px-5 py-3.5 backdrop-blur">
+      <header
+        className={`z-20 flex shrink-0 flex-wrap items-center justify-between gap-4 border-b border-[var(--line)] bg-white/85 px-5 py-3.5 backdrop-blur ${
+          tab === 'chat' ? '' : 'sticky top-0'
+        }`}
+      >
         <div className="flex flex-wrap items-center gap-4">
           <span className="font-mono text-xs font-semibold uppercase tracking-[0.08em] text-[var(--accent)]">DSA Tracker</span>
           <nav className="flex gap-1 rounded-[10px] bg-[#e8f0ec] p-1">
@@ -1013,7 +1026,7 @@ export default function TrackerApp() {
       <main
         className={
           tab === 'chat'
-            ? 'mx-auto flex h-[calc(100dvh-4.25rem)] w-[min(920px,calc(100%-1rem))] min-h-0 flex-col py-2 sm:w-[min(920px,calc(100%-2rem))]'
+            ? 'mx-auto flex min-h-0 w-full max-w-[920px] flex-1 flex-col overflow-hidden px-3 py-3 sm:px-4'
             : 'mx-auto w-[min(1100px,calc(100%-2rem))] py-6 pb-12'
         }
       >
@@ -1280,8 +1293,8 @@ export default function TrackerApp() {
         )}
 
         {tab === 'chat' && (
-          <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[18px] border border-[var(--line)] bg-white shadow-[var(--shadow)]">
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--line)] bg-white px-4 py-3">
+          <section className="chat-shell flex min-h-0 flex-1 flex-col overflow-hidden rounded-[18px] border border-[var(--line)] bg-white shadow-[var(--shadow)]">
+            <div className="chat-shell-top flex shrink-0 items-center justify-between gap-3 border-b border-[var(--line)] bg-white px-4 py-3">
               <div className="flex min-w-0 items-center gap-3">
                 {(() => {
                   const partner = people.find((p) => !p.isYou) || {
@@ -1360,10 +1373,7 @@ export default function TrackerApp() {
                 )}
               </div>
             </div>
-            <div
-              ref={chatScrollRef}
-              className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-[linear-gradient(180deg,#f7faf8_0%,#eef4f0_100%)] px-4 py-4"
-            >
+            <div ref={chatScrollRef} className="chat-shell-messages">
               {messages.length === 0 && (
                 <p className="py-12 text-center text-[var(--muted)]">No messages yet. Say hi and start the grind talk.</p>
               )}
@@ -1479,7 +1489,7 @@ export default function TrackerApp() {
               <div ref={chatEndRef} />
             </div>
             {replyTo && (
-              <div className="flex shrink-0 items-center justify-between border-t border-[var(--line)] bg-[#f1faf5] px-3 py-2 text-sm">
+              <div className="chat-shell-top flex shrink-0 items-center justify-between border-t border-[var(--line)] bg-[#f1faf5] px-3 py-2 text-sm">
                 <div className="min-w-0">
                   <p className="m-0 font-semibold text-[var(--accent)]">Replying to {replyTo.displayName}</p>
                   <p className="m-0 truncate text-[var(--muted)]">{replyTo.text}</p>
@@ -1489,7 +1499,7 @@ export default function TrackerApp() {
                 </button>
               </div>
             )}
-            <form onSubmit={sendChat} className="flex shrink-0 gap-2 border-t border-[var(--line)] bg-white p-3">
+            <form onSubmit={sendChat} className="chat-shell-top flex shrink-0 gap-2 border-t border-[var(--line)] bg-white p-3">
               <SnapAvatar username={user.username} size={36} className="mt-0.5" />
               <input
                 value={chatDraft}
