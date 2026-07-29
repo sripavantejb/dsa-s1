@@ -104,3 +104,40 @@ export async function POST(req) {
     return NextResponse.json({ message: 'Failed to update' }, { status: 500 });
   }
 }
+
+export async function PATCH(req) {
+  try {
+    await connectDB();
+    await ensureSeeded();
+    const user = await getAuthUser();
+    if (!user) return NextResponse.json({ message: 'Login required' }, { status: 401 });
+
+    const { qid, action } = await req.json();
+    if (!qid || !['star', 'doubt'].includes(action)) {
+      return NextResponse.json({ message: 'qid and valid action required' }, { status: 400 });
+    }
+
+    const questionExists = await Question.exists({ qid });
+    if (!questionExists) {
+      return NextResponse.json({ message: 'Question not found' }, { status: 404 });
+    }
+
+    const field = action === 'star' ? 'starred' : 'doubts';
+    const values = Array.isArray(user[field]) ? user[field] : [];
+    const index = values.indexOf(qid);
+    const active = index < 0;
+    if (active) values.push(qid);
+    else values.splice(index, 1);
+    user[field] = values;
+    await user.save();
+
+    return NextResponse.json({
+      ...progressPayload(user),
+      action,
+      active,
+    });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ message: 'Failed to update question flag' }, { status: 500 });
+  }
+}

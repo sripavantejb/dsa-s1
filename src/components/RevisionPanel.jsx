@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 function formatDate(iso) {
   if (!iso) return '—';
@@ -19,8 +19,23 @@ function badgeClass(tone) {
   return 'bg-[#eef0f2] text-[#667085]';
 }
 
-function RevisionCard({ item, busyId, onRevise, onReset, onOpen }) {
+function toDateInput(iso) {
+  if (!iso) return '';
+  const date = new Date(iso);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function RevisionCard({ item, busyId, onRevise, onReset, onSchedule, onOpen }) {
   const busy = busyId === item.id;
+  const [scheduleDate, setScheduleDate] = useState(() => toDateInput(item.nextRevisionAt));
+
+  useEffect(() => {
+    setScheduleDate(toDateInput(item.nextRevisionAt));
+  }, [item.nextRevisionAt]);
+
   return (
     <div className="rounded-xl border border-[var(--line)] bg-[#fbfdfc] px-3.5 py-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -50,7 +65,7 @@ function RevisionCard({ item, busyId, onRevise, onReset, onOpen }) {
             Solved {formatDate(item.solvedAt)} · Week {item.stage} · Next {formatDate(item.nextRevisionAt)}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {(item.link || item.qid) && (
             <button
               type="button"
@@ -70,6 +85,24 @@ function RevisionCard({ item, busyId, onRevise, onReset, onOpen }) {
               Mark revised
             </button>
           )}
+          <label className="flex items-center gap-1 rounded-[10px] border border-[var(--line)] bg-white px-2 py-1 text-xs font-semibold text-[var(--muted)]">
+            Schedule
+            <input
+              type="date"
+              value={scheduleDate}
+              disabled={busy}
+              onChange={(event) => setScheduleDate(event.target.value)}
+              className="bg-transparent text-xs text-[var(--ink)] outline-none"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={busy || !scheduleDate || scheduleDate === toDateInput(item.nextRevisionAt)}
+            onClick={() => onSchedule(item.id, scheduleDate)}
+            className="rounded-[10px] border border-[var(--accent)] bg-white px-2.5 py-1.5 text-xs font-semibold text-[var(--accent)] disabled:border-[var(--line)] disabled:text-[var(--muted)] disabled:opacity-50"
+          >
+            Save date
+          </button>
           <button
             type="button"
             disabled={busy}
@@ -95,6 +128,7 @@ export function RevisionPanel({
   onRefresh,
   onRevise,
   onReset,
+  onSchedule,
   onEnableTracking,
   onAddManual,
   onOpenItem,
@@ -463,6 +497,7 @@ export function RevisionPanel({
               busyId={busyId}
               onRevise={onRevise}
               onReset={onReset}
+              onSchedule={onSchedule}
               onOpen={onOpenItem}
             />
           ))}
@@ -487,6 +522,7 @@ export function RevisionPanel({
               busyId={busyId}
               onRevise={onRevise}
               onReset={onReset}
+              onSchedule={onSchedule}
               onOpen={onOpenItem}
             />
           ))}

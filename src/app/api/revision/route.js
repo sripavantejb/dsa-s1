@@ -156,6 +156,29 @@ export async function PATCH(req) {
     } else if (action === 'resume') {
       item.trackingActive = true;
       await item.save();
+    } else if (action === 'schedule') {
+      const scheduledFor = parseDateInput(body.date);
+      if (!scheduledFor) {
+        return NextResponse.json({ message: 'Valid revision date required' }, { status: 400 });
+      }
+      item.nextRevisionAt = scheduledFor;
+      item.trackingActive = true;
+      const history = [...(item.history || [])];
+      const currentIndex = history.findIndex(
+        (entry) => entry.week === item.stage && !entry.completedAt
+      );
+      if (currentIndex >= 0) {
+        history[currentIndex].scheduledFor = scheduledFor;
+      } else {
+        history.push({
+          week: item.stage || 1,
+          scheduledFor,
+          completedAt: null,
+        });
+      }
+      item.history = history;
+      item.markModified('history');
+      await item.save();
     } else {
       return NextResponse.json({ message: 'Unknown action' }, { status: 400 });
     }

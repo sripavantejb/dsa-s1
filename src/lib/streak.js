@@ -93,6 +93,8 @@ export function progressPayload(user) {
   const challenge = challengeProgress(dailySolves);
   return {
     solved: user.solved || [],
+    starred: user.starred || [],
+    doubts: user.doubts || [],
     solvedCount: (user.solved || []).length,
     currentStreak,
     bestStreak,

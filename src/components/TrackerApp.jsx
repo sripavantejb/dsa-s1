@@ -203,6 +203,8 @@ export default function TrackerApp() {
   const [tab, setTab] = useState('sheet');
   const [questions, setQuestions] = useState([]);
   const [solved, setSolved] = useState([]);
+  const [starred, setStarred] = useState([]);
+  const [doubts, setDoubts] = useState([]);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
   const [todayCount, setTodayCount] = useState(0);
@@ -284,6 +286,8 @@ export default function TrackerApp() {
   }, [tab]);
 
   const solvedSet = useMemo(() => new Set(solved), [solved]);
+  const starredSet = useMemo(() => new Set(starred), [starred]);
+  const doubtSet = useMemo(() => new Set(doubts), [doubts]);
 
   useEffect(() => {
     if (tab !== 'chat') return undefined;
@@ -326,6 +330,8 @@ export default function TrackerApp() {
 
   function applyProgress(progress) {
     setSolved(progress.solved || []);
+    setStarred(progress.starred || []);
+    setDoubts(progress.doubts || []);
     setCurrentStreak(progress.currentStreak || 0);
     setBestStreak(progress.bestStreak || 0);
     setTodayCount(progress.todayRawCount ?? progress.todayCount ?? 0);
@@ -845,6 +851,30 @@ export default function TrackerApp() {
     }
   }
 
+  async function toggleQuestionFlag(qid, action) {
+    setBusyId(`${action}-${qid}`);
+    try {
+      const data = await api('/api/progress', {
+        method: 'PATCH',
+        body: JSON.stringify({ qid, action }),
+      });
+      applyProgress(data);
+      toast.success(
+        action === 'star'
+          ? data.active
+            ? 'Question starred'
+            : 'Star removed'
+          : data.active
+            ? 'Marked as doubt'
+            : 'Doubt cleared'
+      );
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function openQuestion(q) {
     api('/api/activity', { method: 'POST', body: JSON.stringify({ qid: q.qid }) }).catch(() => {});
     if (q.link) window.open(q.link, '_blank', 'noopener,noreferrer');
@@ -875,6 +905,22 @@ export default function TrackerApp() {
       });
       setRevision(data);
       toast.info('Revision schedule reset');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setRevisionBusyId(null);
+    }
+  }
+
+  async function scheduleRevisionItem(id, date) {
+    setRevisionBusyId(id);
+    try {
+      const data = await api('/api/revision', {
+        method: 'PATCH',
+        body: JSON.stringify({ id, action: 'schedule', date }),
+      });
+      setRevision(data);
+      toast.success('Revision date scheduled');
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -948,10 +994,12 @@ export default function TrackerApp() {
       const done = solvedSet.has(item.qid);
       if (status === 'done' && !done) return false;
       if (status === 'todo' && done) return false;
+      if (status === 'starred' && !starredSet.has(item.qid)) return false;
+      if (status === 'doubt' && !doubtSet.has(item.qid)) return false;
       if (q && !item.title.toLowerCase().includes(q) && !item.topic.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [questions, search, topic, status, diff, solvedSet]);
+  }, [questions, search, topic, status, diff, solvedSet, starredSet, doubtSet]);
 
   const total = questions.length;
   const solvedCount = solved.length;
@@ -1241,6 +1289,8 @@ export default function TrackerApp() {
                 <option value="all">All status</option>
                 <option value="todo">Todo</option>
                 <option value="done">Done</option>
+                <option value="starred">Starred</option>
+                <option value="doubt">Doubts</option>
               </select>
               <select value={diff} onChange={(e) => setDiff(e.target.value)} className="rounded-[10px] border border-[var(--line)] bg-[#fbfdfc] px-3 py-2.5">
                 <option value="all">All difficulty</option>
@@ -1278,6 +1328,8 @@ export default function TrackerApp() {
               {filtered.length === 0 && <p className="py-10 text-center text-[var(--muted)]">No questions match your filters.</p>}
               {filtered.map((q) => {
                 const done = solvedSet.has(q.qid);
+                const isStarred = starredSet.has(q.qid);
+                const hasDoubt = doubtSet.has(q.qid);
                 const rev = revision?.byQid?.[q.qid];
                 return (
                   <div
@@ -1313,6 +1365,16 @@ export default function TrackerApp() {
                         >
                           {q.difficulty}
                         </span>
+                        {isStarred && (
+                          <span className="rounded-md bg-[#fff4cc] px-1.5 py-0.5 font-mono text-[0.68rem] font-semibold text-[#9a6700]">
+                            ★ Starred
+                          </span>
+                        )}
+                        {hasDoubt && (
+                          <span className="rounded-md bg-[#f3e8ff] px-1.5 py-0.5 font-mono text-[0.68rem] font-semibold text-[#7c3aed]">
+                            ? Doubt
+                          </span>
+                        )}
                         {done && !rev && (
                           <span className="rounded-md bg-[#e0f2fe] px-1.5 py-0.5 font-mono text-[0.68rem] font-semibold text-[#0369a1]">
                             Solved
@@ -1338,17 +1400,45 @@ export default function TrackerApp() {
                         )}
                       </div>
                     </div>
-                    {q.link ? (
+                    <div className="flex flex-wrap items-center gap-1.5 justify-self-start sm:justify-self-end">
                       <button
                         type="button"
-                        onClick={() => openQuestion(q)}
-                        className="justify-self-start font-mono text-xs font-medium text-[var(--accent)] hover:underline sm:justify-self-end"
+                        disabled={busyId === `star-${q.qid}`}
+                        onClick={() => toggleQuestionFlag(q.qid, 'star')}
+                        className={`rounded-lg border px-2 py-1 text-xs font-semibold ${
+                          isStarred
+                            ? 'border-[#f5c842] bg-[#fff4cc] text-[#9a6700]'
+                            : 'border-[var(--line)] bg-white text-[var(--muted)]'
+                        }`}
+                        aria-label={isStarred ? 'Remove star' : 'Star question'}
                       >
-                        Open →
+                        {isStarred ? '★ Starred' : '☆ Star'}
                       </button>
-                    ) : (
-                      <span className="font-mono text-xs text-[var(--muted)] sm:justify-self-end">No link</span>
-                    )}
+                      <button
+                        type="button"
+                        disabled={busyId === `doubt-${q.qid}`}
+                        onClick={() => toggleQuestionFlag(q.qid, 'doubt')}
+                        className={`rounded-lg border px-2 py-1 text-xs font-semibold ${
+                          hasDoubt
+                            ? 'border-[#c4a7e7] bg-[#f3e8ff] text-[#7c3aed]'
+                            : 'border-[var(--line)] bg-white text-[var(--muted)]'
+                        }`}
+                        aria-label={hasDoubt ? 'Clear doubt' : 'Mark as doubt'}
+                      >
+                        {hasDoubt ? '? Doubt' : '? Mark doubt'}
+                      </button>
+                      {q.link ? (
+                        <button
+                          type="button"
+                          onClick={() => openQuestion(q)}
+                          className="px-1 font-mono text-xs font-medium text-[var(--accent)] hover:underline"
+                        >
+                          Open →
+                        </button>
+                      ) : (
+                        <span className="font-mono text-xs text-[var(--muted)]">No link</span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -1364,6 +1454,7 @@ export default function TrackerApp() {
             onRefresh={loadRevision}
             onRevise={reviseItem}
             onReset={resetRevisionItem}
+            onSchedule={scheduleRevisionItem}
             onEnableTracking={enableRevisionTracking}
             onAddManual={addManualRevision}
             onOpenItem={openRevisionItem}
