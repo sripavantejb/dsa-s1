@@ -95,8 +95,9 @@ export async function POST(req) {
       const solvedAt = parseDateInput(body.solvedAt || body.dateSolved) || startOfLocalDay(new Date());
       if (!solvedAt) return NextResponse.json({ message: 'Invalid solved date' }, { status: 400 });
 
-      const next = startOfLocalDay(solvedAt);
-      next.setDate(next.getDate() + 7);
+      const requestedNext = parseDateInput(body.nextRevisionDate);
+      const next = requestedNext || startOfLocalDay(solvedAt);
+      if (!requestedNext) next.setDate(next.getDate() + 7);
 
       const item = await RevisionItem.create({
         username: user.username,

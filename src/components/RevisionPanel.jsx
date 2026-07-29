@@ -121,6 +121,267 @@ function RevisionCard({ item, busyId, onRevise, onReset, onSchedule, onOpen }) {
   );
 }
 
+function dateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function dateFromKey(key) {
+  const [year, month, day] = String(key).split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function eventTone(type) {
+  if (type === 'solved') return 'border-[#b7dfca] bg-[#f1faf5] text-[var(--easy)]';
+  if (type === 'external') return 'border-[#d8b4fe] bg-[#faf5ff] text-[#7c3aed]';
+  if (type === 'revised') return 'border-[#bae6fd] bg-[#f0f9ff] text-[#0369a1]';
+  if (type === 'due') return 'border-[#f6d9a8] bg-[#fffbeb] text-[#b54708]';
+  return 'border-[#e2e8f0] bg-[#f8fafc] text-[#64748b]';
+}
+
+function eventLabel(type) {
+  if (type === 'solved') return 'Solved';
+  if (type === 'external') return 'External problem';
+  if (type === 'revised') return 'Revision completed';
+  if (type === 'due') return 'Revision due';
+  return 'Marked unsolved';
+}
+
+function CalendarTimeline({ revision, busyId, onSchedule, onOpenItem }) {
+  const timeline = revision?.timeline || { byDate: {}, dates: [] };
+  const items = revision?.items || [];
+  const today = dateKey();
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [monthCursor, setMonthCursor] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [planItemId, setPlanItemId] = useState('');
+
+  const calendarDays = useMemo(() => {
+    const year = monthCursor.getFullYear();
+    const month = monthCursor.getMonth();
+    const firstWeekday = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const cells = Array(firstWeekday).fill(null);
+    for (let day = 1; day <= totalDays; day += 1) {
+      cells.push(new Date(year, month, day));
+    }
+    while (cells.length % 7) cells.push(null);
+    return cells;
+  }, [monthCursor]);
+
+  const selected = timeline.byDate?.[selectedDate] || {
+    solved: [],
+    external: [],
+    revised: [],
+    due: [],
+    reopened: [],
+  };
+  const selectedEvents = [
+    ...(selected.solved || []),
+    ...(selected.external || []),
+    ...(selected.revised || []),
+    ...(selected.due || []),
+    ...(selected.reopened || []),
+  ];
+
+  const moveMonth = (delta) => {
+    setMonthCursor(
+      (current) => new Date(current.getFullYear(), current.getMonth() + delta, 1)
+    );
+  };
+
+  const jumpToDate = (key) => {
+    const next = dateFromKey(key);
+    setSelectedDate(key);
+    setMonthCursor(new Date(next.getFullYear(), next.getMonth(), 1));
+  };
+
+  const scheduleSelected = async () => {
+    if (!planItemId || !selectedDate) return;
+    await onSchedule(planItemId, selectedDate);
+    setPlanItemId('');
+  };
+
+  return (
+    <section className="rounded-[18px] border border-[var(--line)] bg-white p-4 shadow-[var(--shadow)]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="m-0 text-xl font-bold">Calendar & timeline</h3>
+          <p className="mb-0 mt-1 text-sm text-[var(--muted)]">
+            See what you solved each day, external links added, and every revision date.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => jumpToDate(today)}
+          className="rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-xs font-semibold text-[var(--accent)]"
+        >
+          Today
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
+        <div className="rounded-[14px] border border-[var(--line)] bg-[#fbfdfc] p-3">
+          <div className="mb-3 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => moveMonth(-1)}
+              className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--line)] bg-white text-lg"
+              aria-label="Previous month"
+            >
+              ‹
+            </button>
+            <p className="m-0 text-sm font-bold">
+              {monthCursor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            </p>
+            <button
+              type="button"
+              onClick={() => moveMonth(1)}
+              className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--line)] bg-white text-lg"
+              aria-label="Next month"
+            >
+              ›
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 gap-1 text-center">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+              <span
+                key={day}
+                className="py-1 font-mono text-[0.62rem] font-semibold uppercase text-[var(--muted)]"
+              >
+                {day}
+              </span>
+            ))}
+            {calendarDays.map((date, index) => {
+              if (!date) return <span key={`blank-${index}`} className="aspect-square" />;
+              const key = dateKey(date);
+              const events = timeline.byDate?.[key];
+              const solvedCount = (events?.solved?.length || 0) + (events?.external?.length || 0);
+              const revisedCount = events?.revised?.length || 0;
+              const dueCount = events?.due?.length || 0;
+              const active = selectedDate === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSelectedDate(key)}
+                  className={`relative aspect-square rounded-lg border p-1 text-sm transition ${
+                    active
+                      ? 'border-[var(--accent)] bg-[var(--accent-soft)] font-bold text-[var(--accent)]'
+                      : key === today
+                        ? 'border-[#9acbb2] bg-white'
+                        : 'border-transparent bg-white hover:border-[var(--line)]'
+                  }`}
+                  title={`${solvedCount} solved/added, ${revisedCount} revised, ${dueCount} due`}
+                >
+                  <span>{date.getDate()}</span>
+                  {(solvedCount > 0 || revisedCount > 0 || dueCount > 0) && (
+                    <span className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-0.5">
+                      {solvedCount > 0 && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+                      {revisedCount > 0 && <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />}
+                      {dueCount > 0 && <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-3 border-t border-[var(--line)] pt-2 font-mono text-[0.65rem] text-[var(--muted)]">
+            <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-500" />Solved / external</span>
+            <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-sky-500" />Revised</span>
+            <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-amber-500" />Due</span>
+          </div>
+        </div>
+
+        <div className="min-w-0">
+          <div className="rounded-[14px] border border-[var(--line)] bg-[#fbfdfc] p-3">
+            <p className="m-0 text-sm font-bold">{formatDate(selectedDate)}</p>
+            <p className="mt-0.5 mb-3 font-mono text-[0.68rem] text-[var(--muted)]">
+              {selectedEvents.length} timeline event{selectedEvents.length === 1 ? '' : 's'}
+            </p>
+
+            <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
+              {selectedEvents.length === 0 && (
+                <p className="py-8 text-center text-sm text-[var(--muted)]">
+                  No activity or revisions on this date.
+                </p>
+              )}
+              {selectedEvents.map((event) => (
+                <div
+                  key={event.eventId}
+                  className={`rounded-xl border px-3 py-2.5 ${eventTone(event.type)}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="m-0 text-xs font-bold uppercase tracking-[0.04em]">
+                        {eventLabel(event.type)}
+                        {event.stage ? ` · Week ${event.stage}` : ''}
+                      </p>
+                      <p className="mt-0.5 mb-0 truncate text-sm font-semibold text-[var(--ink)]">
+                        {event.title}
+                      </p>
+                      <p className="mt-0.5 mb-0 font-mono text-[0.65rem] text-[var(--muted)]">
+                        {[event.platform, event.topic, event.difficulty]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </p>
+                    </div>
+                    {(event.link || event.qid) && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenItem(event)}
+                        className="shrink-0 rounded-lg border border-current bg-white/70 px-2 py-1 text-xs font-semibold"
+                      >
+                        Open
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-3 rounded-[14px] border border-[var(--line)] bg-white p-3">
+            <p className="m-0 text-sm font-bold">Plan revision on selected date</p>
+            <p className="mt-1 mb-2 text-xs text-[var(--muted)]">
+              Choose any tracked or external problem and schedule it for {formatDate(selectedDate)}.
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <select
+                value={planItemId}
+                onChange={(event) => setPlanItemId(event.target.value)}
+                className="min-w-0 flex-1 rounded-[10px] border border-[var(--line)] bg-[#fbfdfc] px-3 py-2 text-sm"
+              >
+                <option value="">Select a problem…</option>
+                {items.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.source === 'manual' ? '[External] ' : ''}
+                    {item.title}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={!planItemId || busyId === planItemId}
+                onClick={scheduleSelected}
+                className="rounded-[10px] bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                Schedule here
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function RevisionPanel({
   revision,
   loading,
@@ -146,6 +407,7 @@ export function RevisionPanel({
     difficulty: 'UNRATED',
     notes: '',
     dateSolved: new Date().toISOString().slice(0, 10),
+    nextRevisionDate: dateKey(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
   });
   const [saving, setSaving] = useState(false);
 
@@ -216,6 +478,7 @@ export function RevisionPanel({
         difficulty: 'UNRATED',
         notes: '',
         dateSolved: new Date().toISOString().slice(0, 10),
+        nextRevisionDate: dateKey(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
       });
       setShowManual(false);
     } finally {
@@ -290,6 +553,13 @@ export function RevisionPanel({
           </div>
         )}
       </section>
+
+      <CalendarTimeline
+        revision={revision}
+        busyId={busyId}
+        onSchedule={onSchedule}
+        onOpenItem={onOpenItem}
+      />
 
       {revision?.untracked?.count > 0 && (
         <section className="rounded-[18px] border border-[#f6d9a8] bg-[#fffbeb] p-4 shadow-[var(--shadow)]">
@@ -400,9 +670,10 @@ export function RevisionPanel({
               className="rounded-[10px] border border-[var(--line)] bg-[#fbfdfc] px-3 py-2.5"
             />
             <input
+              type="url"
               value={manual.link}
               onChange={(e) => setManual((m) => ({ ...m, link: e.target.value }))}
-              placeholder="Problem link"
+              placeholder="External problem link (https://…)"
               className="rounded-[10px] border border-[var(--line)] bg-[#fbfdfc] px-3 py-2.5"
             />
             <input
@@ -421,13 +692,28 @@ export function RevisionPanel({
               <option value="HARD">Hard</option>
               <option value="UNRATED">Unrated</option>
             </select>
-            <input
-              type="date"
-              required
-              value={manual.dateSolved}
-              onChange={(e) => setManual((m) => ({ ...m, dateSolved: e.target.value }))}
-              className="rounded-[10px] border border-[var(--line)] bg-[#fbfdfc] px-3 py-2.5"
-            />
+            <label className="text-xs font-semibold text-[var(--muted)]">
+              Date solved
+              <input
+                type="date"
+                required
+                value={manual.dateSolved}
+                onChange={(e) => setManual((m) => ({ ...m, dateSolved: e.target.value }))}
+                className="mt-1 block w-full rounded-[10px] border border-[var(--line)] bg-[#fbfdfc] px-3 py-2.5 text-sm text-[var(--ink)]"
+              />
+            </label>
+            <label className="text-xs font-semibold text-[var(--muted)]">
+              First revision date
+              <input
+                type="date"
+                required
+                value={manual.nextRevisionDate}
+                onChange={(e) =>
+                  setManual((m) => ({ ...m, nextRevisionDate: e.target.value }))
+                }
+                className="mt-1 block w-full rounded-[10px] border border-[var(--line)] bg-[#fbfdfc] px-3 py-2.5 text-sm text-[var(--ink)]"
+              />
+            </label>
             <textarea
               value={manual.notes}
               onChange={(e) => setManual((m) => ({ ...m, notes: e.target.value }))}

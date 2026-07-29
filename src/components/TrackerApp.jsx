@@ -953,6 +953,7 @@ export default function TrackerApp() {
         difficulty: fields.difficulty,
         notes: fields.notes,
         dateSolved: fields.dateSolved,
+        nextRevisionDate: fields.nextRevisionDate,
         track: true,
       }),
     });

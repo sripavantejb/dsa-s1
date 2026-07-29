@@ -1,7 +1,7 @@
 import RevisionItem from './models/RevisionItem.js';
 import Question from './models/Question.js';
 import Activity from './models/Activity.js';
-import { todayKey, normalizeDailySolves } from './streak.js';
+import { normalizeDailySolves } from './streak.js';
 
 const MS_DAY = 24 * 60 * 60 * 1000;
 export const REVISION_INTERVAL_DAYS = 7;
@@ -19,7 +19,14 @@ export function addDaysDate(date, days) {
 }
 
 export function dateKeyFromDate(date = new Date()) {
-  return todayKey(startOfLocalDay(date));
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(date));
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
 }
 
 /** Compute badge / queue status for a revision item relative to today */
@@ -219,8 +226,23 @@ export async function guessSolvedAtFromActivity(username, qid) {
 }
 
 export async function buildRevisionDashboard(username, user) {
-  const items = await RevisionItem.find({ username }).sort({ nextRevisionAt: 1 }).lean();
-  const qids = items.map((i) => i.qid).filter(Boolean);
+  const dailyMap = normalizeDailySolves(user?.dailySolves);
+  const [items, activities] = await Promise.all([
+    RevisionItem.find({ username }).sort({ nextRevisionAt: 1 }).lean(),
+    Activity.find({
+      username,
+      action: { $in: ['finished', 'reopened'] },
+    })
+      .sort({ createdAt: 1 })
+      .lean(),
+  ]);
+  const qids = [
+    ...new Set([
+      ...items.map((i) => i.qid).filter(Boolean),
+      ...activities.map((activity) => activity.qid).filter(Boolean),
+      ...Object.values(dailyMap).flat().filter(Boolean),
+    ]),
+  ];
   const questions = qids.length
     ? await Question.find({ qid: { $in: qids } }).lean()
     : [];
@@ -248,7 +270,6 @@ export async function buildRevisionDashboard(username, user) {
     (s) => s.lastRevisedAt && dateKeyFromDate(s.lastRevisedAt) === todayKeyStr
   );
 
-  const dailyMap = normalizeDailySolves(user?.dailySolves);
   const solvedTodayQids = dailyMap[todayKeyStr] || [];
   const solvedTodayQuestions = solvedTodayQids.length
     ? await Question.find({ qid: { $in: solvedTodayQids } }).lean()
@@ -320,6 +341,127 @@ export async function buildRevisionDashboard(username, user) {
     if (s.qid) byQid[s.qid] = s;
   }
 
+  const timelineByDate = {};
+  const addTimelineEvent = (date, event) => {
+    if (!date) return;
+    const key = dateKeyFromDate(date);
+    if (!timelineByDate[key]) {
+      timelineByDate[key] = {
+        date: key,
+        solved: [],
+        external: [],
+        revised: [],
+        due: [],
+        reopened: [],
+      };
+    }
+    timelineByDate[key][event.type].push(event);
+  };
+
+  const activityFinishedQids = new Set();
+  for (const activity of activities) {
+    const question = qMap[activity.qid];
+    const tracked = byQid[activity.qid];
+    const base = {
+      eventId: `activity-${activity._id}`,
+      id: tracked?.id || null,
+      qid: activity.qid,
+      title: question?.title || activity.title,
+      topic: question?.topic || activity.topic || '',
+      difficulty: question?.difficulty || tracked?.difficulty || 'UNRATED',
+      source: 'problem_set',
+      link: question?.link || tracked?.link || '',
+      platform: '',
+      at: activity.createdAt,
+    };
+    if (activity.action === 'finished') {
+      activityFinishedQids.add(activity.qid);
+      addTimelineEvent(activity.createdAt, { ...base, type: 'solved' });
+    } else if (activity.action === 'reopened') {
+      addTimelineEvent(activity.createdAt, { ...base, type: 'reopened' });
+    }
+  }
+
+  for (const [day, dayQids] of Object.entries(dailyMap)) {
+    for (const qid of dayQids || []) {
+      if (activityFinishedQids.has(qid)) continue;
+      const question = qMap[qid];
+      const tracked = byQid[qid];
+      addTimelineEvent(day, {
+        eventId: `daily-solve-${day}-${qid}`,
+        id: tracked?.id || null,
+        qid,
+        title: question?.title || tracked?.title || qid,
+        topic: question?.topic || tracked?.topic || '',
+        difficulty: question?.difficulty || tracked?.difficulty || 'UNRATED',
+        source: 'problem_set',
+        link: question?.link || tracked?.link || '',
+        platform: '',
+        type: 'solved',
+        at: day,
+      });
+      activityFinishedQids.add(qid);
+    }
+  }
+
+  for (const item of serialized) {
+    const base = {
+      id: item.id,
+      qid: item.qid,
+      title: item.title,
+      topic: item.topic,
+      difficulty: item.difficulty,
+      source: item.source,
+      link: item.link,
+      platform: item.platform,
+    };
+
+    if (item.source === 'manual') {
+      addTimelineEvent(item.solvedAt, {
+        ...base,
+        eventId: `external-${item.id}`,
+        type: 'external',
+        at: item.solvedAt,
+      });
+    } else if (!activityFinishedQids.has(item.qid)) {
+      addTimelineEvent(item.solvedAt, {
+        ...base,
+        eventId: `tracked-solve-${item.id}`,
+        type: 'solved',
+        at: item.solvedAt,
+      });
+    }
+
+    for (const history of item.history || []) {
+      addTimelineEvent(history.scheduledFor, {
+        ...base,
+        eventId: `due-${item.id}-${history.week}`,
+        type: 'due',
+        stage: history.week,
+        at: history.scheduledFor,
+        completedAt: history.completedAt,
+      });
+      if (history.completedAt) {
+        addTimelineEvent(history.completedAt, {
+          ...base,
+          eventId: `revised-${item.id}-${history.week}`,
+          type: 'revised',
+          stage: history.week,
+          at: history.completedAt,
+          scheduledFor: history.scheduledFor,
+        });
+      }
+    }
+  }
+
+  const timelineDates = Object.keys(timelineByDate).sort();
+  const timeline = {
+    byDate: timelineByDate,
+    dates: timelineDates,
+    firstDate: timelineDates[0] || todayKeyStr,
+    lastDate: timelineDates[timelineDates.length - 1] || todayKeyStr,
+  };
+
   return {
     items: serialized,
     byQid,
@@ -364,5 +506,6 @@ export async function buildRevisionDashboard(username, user) {
       count: untracked.length,
       questions: untracked,
     },
+    timeline,
   };
 }
