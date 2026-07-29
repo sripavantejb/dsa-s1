@@ -6,6 +6,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { SnapAvatar } from './SnapAvatar';
 import { CallController } from './CallPanel';
 import { RevisionPanel, revisionBadgeToneClass } from './RevisionPanel';
+import { DEFAULT_SHEET, SHEETS } from '@/lib/sheets';
 
 const REACTION_EMOJIS = ['❤️', '👍', '😂', '🔥', '💯', '😮', '😢', '👏'];
 
@@ -202,6 +203,8 @@ export default function TrackerApp() {
   const [booting, setBooting] = useState(true);
   const [tab, setTab] = useState('sheet');
   const [questions, setQuestions] = useState([]);
+  const [sheets, setSheets] = useState(SHEETS);
+  const [activeSheet, setActiveSheet] = useState(DEFAULT_SHEET);
   const [solved, setSolved] = useState([]);
   const [starred, setStarred] = useState([]);
   const [doubts, setDoubts] = useState([]);
@@ -380,6 +383,7 @@ export default function TrackerApp() {
       api('/api/revision').catch(() => null),
     ]);
     setQuestions(qs.questions);
+    if (qs.sheets?.length) setSheets(qs.sheets);
     applyProgress(progress);
     setFeed(act.activities || []);
     sinceRef.current = act.serverTime || new Date().toISOString();
@@ -968,27 +972,53 @@ export default function TrackerApp() {
     }
   }
 
+  const sheetQuestions = useMemo(
+    () => questions.filter((q) => (q.sheet || DEFAULT_SHEET) === activeSheet),
+    [questions, activeSheet]
+  );
+
+  const sheetMeta = useMemo(
+    () => sheets.find((s) => s.id === activeSheet) || sheets[0] || SHEETS[0],
+    [sheets, activeSheet]
+  );
+
+  const sheetCounts = useMemo(() => {
+    const map = {};
+    for (const q of questions) {
+      const id = q.sheet || DEFAULT_SHEET;
+      if (!map[id]) map[id] = { total: 0, done: 0 };
+      map[id].total += 1;
+      if (solvedSet.has(q.qid)) map[id].done += 1;
+    }
+    return map;
+  }, [questions, solvedSet]);
+
+  function switchSheet(id) {
+    setActiveSheet(id);
+    setTopic('all');
+  }
+
   const topics = useMemo(() => {
     const seen = [];
-    for (const q of questions) {
+    for (const q of sheetQuestions) {
       if (!seen.includes(q.topic)) seen.push(q.topic);
     }
     return seen;
-  }, [questions]);
+  }, [sheetQuestions]);
 
   const topicCounts = useMemo(() => {
     const map = {};
-    for (const q of questions) {
+    for (const q of sheetQuestions) {
       if (!map[q.topic]) map[q.topic] = { total: 0, done: 0 };
       map[q.topic].total += 1;
       if (solvedSet.has(q.qid)) map[q.topic].done += 1;
     }
     return map;
-  }, [questions, solvedSet]);
+  }, [sheetQuestions, solvedSet]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return questions.filter((item) => {
+    return sheetQuestions.filter((item) => {
       if (topic !== 'all' && item.topic !== topic) return false;
       if (diff !== 'all' && item.difficulty !== diff) return false;
       const done = solvedSet.has(item.qid);
@@ -999,11 +1029,14 @@ export default function TrackerApp() {
       if (q && !item.title.toLowerCase().includes(q) && !item.topic.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [questions, search, topic, status, diff, solvedSet, starredSet, doubtSet]);
+  }, [sheetQuestions, search, topic, status, diff, solvedSet, starredSet, doubtSet]);
 
   const total = questions.length;
   const solvedCount = solved.length;
   const pct = total ? Math.round((solvedCount / total) * 100) : 0;
+  const sheetTotal = sheetQuestions.length;
+  const sheetSolvedCount = sheetCounts[activeSheet]?.done || 0;
+  const sheetPct = sheetTotal ? Math.round((sheetSolvedCount / sheetTotal) * 100) : 0;
 
   if (booting) {
     return (
@@ -1269,6 +1302,59 @@ export default function TrackerApp() {
 
         {tab === 'sheet' && (
           <section className="rounded-[18px] border border-[var(--line)] bg-white p-4 shadow-[var(--shadow)]">
+            <div className="mb-3.5 border-b border-[var(--line)] pb-3.5">
+              <div className="flex flex-wrap items-center gap-2">
+                {sheets.map((s) => {
+                  const counts = sheetCounts[s.id] || { total: 0, done: 0 };
+                  const isActive = s.id === activeSheet;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => switchSheet(s.id)}
+                      className={`rounded-[10px] border px-3 py-2 text-sm font-semibold ${
+                        isActive
+                          ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
+                          : 'border-[var(--line)] bg-white text-[var(--muted)] hover:bg-[#fbfdfc]'
+                      }`}
+                    >
+                      {s.label}
+                      <span className="ml-1.5 font-mono text-xs">
+                        {counts.done}/{counts.total}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
+                <p className="m-0 text-sm text-[var(--muted)]">
+                  {sheetMeta?.description}
+                  {sheetMeta?.source && (
+                    <>
+                      {' '}
+                      <a
+                        href={sheetMeta.source}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-[var(--accent)] hover:underline"
+                      >
+                        View original ↗
+                      </a>
+                    </>
+                  )}
+                </p>
+                <p className="m-0 font-mono text-xs text-[var(--muted)]">
+                  {sheetPct}% complete
+                </p>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#e4ece8]">
+                <div
+                  className="h-full rounded-full bg-[var(--accent)] transition-all"
+                  style={{ width: `${sheetPct}%` }}
+                />
+              </div>
+            </div>
+
             <div className="mb-3.5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
               <input
                 type="search"
@@ -1307,7 +1393,7 @@ export default function TrackerApp() {
                 onClick={() => setTopic('all')}
                 className={`rounded-full border px-2.5 py-1.5 text-xs font-semibold ${topic === 'all' ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]' : 'border-transparent bg-[#eef4f0] text-[var(--muted)]'}`}
               >
-                All <span className="ml-1 font-mono">{solvedCount}/{total}</span>
+                All <span className="ml-1 font-mono">{sheetSolvedCount}/{sheetTotal}</span>
               </button>
               {topics.map((t) => (
                 <button
@@ -1352,6 +1438,11 @@ export default function TrackerApp() {
                       </p>
                       <div className="mt-1 flex flex-wrap gap-2">
                         <span className="rounded-md bg-[#e8f0ec] px-1.5 py-0.5 font-mono text-[0.68rem] uppercase text-[var(--muted)]">{q.topic}</span>
+                        {q.subtopic && (
+                          <span className="rounded-md bg-[#eef4f0] px-1.5 py-0.5 font-mono text-[0.68rem] text-[var(--muted)]">
+                            {q.subtopic}
+                          </span>
+                        )}
                         <span
                           className={`rounded-md px-1.5 py-0.5 font-mono text-[0.68rem] uppercase ${
                             q.difficulty === 'EASY'
@@ -1427,6 +1518,16 @@ export default function TrackerApp() {
                       >
                         {hasDoubt ? '? Doubt' : '? Mark doubt'}
                       </button>
+                      {q.altLink && (
+                        <a
+                          href={q.altLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-1 font-mono text-xs font-medium text-[#0369a1] hover:underline"
+                        >
+                          LeetCode ↗
+                        </a>
+                      )}
                       {q.link ? (
                         <button
                           type="button"
@@ -1950,6 +2051,13 @@ export default function TrackerApp() {
                         </strong>
                       </div>
                     </div>
+                  {row.bySheet && (
+                    <p className="mb-0 mt-3 font-mono text-[0.7rem] text-[var(--muted)]">
+                      {sheets
+                        .map((s) => `${s.label} ${row.bySheet[s.id] || 0}/${board.sheetTotals?.[s.id] || 0}`)
+                        .join(' · ')}
+                    </p>
+                  )}
                   <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#e4ece8]">
                     <div className="h-full bg-[var(--accent)] transition-all" style={{ width: `${row.pct}%` }} />
                   </div>
@@ -1957,9 +2065,27 @@ export default function TrackerApp() {
               ))}
             </div>
 
-            <h3 className="mb-3 mt-0 text-lg font-semibold">Topic race</h3>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="m-0 text-lg font-semibold">Topic race</h3>
+              <div className="flex flex-wrap gap-1.5">
+                {sheets.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => switchSheet(s.id)}
+                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                      s.id === activeSheet
+                        ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
+                        : 'border-transparent bg-[#eef4f0] text-[var(--muted)]'
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="grid gap-2.5">
-              {board.topics.map((t) => {
+              {(board.topicsBySheet?.[activeSheet] || board.topics).map((t) => {
                 const totalT = board.topicTotals[t] || 1;
                 return (
                   <div key={t} className="grid items-center gap-3 md:grid-cols-[160px_1fr]">
