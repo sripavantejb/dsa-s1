@@ -56,40 +56,42 @@ export function AutomationPanel() {
   }
 
   return (
-    <section className="animate-rise">
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="m-0 flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-[var(--accent)]">
-            <FlameIcon className="h-3.5 w-3.5" />
-            LeetCode Automation
-          </p>
-          <h1 className="m-0 mt-1 text-2xl font-bold tracking-tight md:text-3xl">Streak automation</h1>
-          <p className="mb-0 mt-1.5 max-w-2xl text-sm text-[var(--muted)] md:text-base">
-            Schedule daily reminders — or opt into browser submissions of solutions you already
-            saved. Isolated module; safe default is reminder-only.
-          </p>
+    <section>
+      <div className="mb-4 rounded-[18px] border border-[var(--line)] bg-white p-4 shadow-[var(--shadow)] animate-rise">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="m-0 flex items-center gap-1.5 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-[var(--accent)]">
+              <FlameIcon className="h-3.5 w-3.5" />
+              LeetCode Automation
+            </p>
+            <h2 className="mt-1 mb-0 text-xl font-bold tracking-tight">Streak automation</h2>
+            <p className="mt-1 mb-0 text-sm text-[var(--muted)]">
+              Schedule daily reminders — or opt into browser submissions of solutions you already saved.
+              Safe default is reminder-only.
+            </p>
+          </div>
         </div>
-      </div>
 
-      <nav
-        className="mb-5 flex flex-wrap gap-1 rounded-[12px] bg-[#e8f0ec] p-1 dark:bg-white/10"
-        aria-label="Automation pages"
-      >
-        {AUTOMATION_PAGES.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => setPage(p.id)}
-            className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold transition ${
-              page === p.id
-                ? 'bg-white text-[var(--ink)] shadow-sm dark:bg-white/20 dark:text-white'
-                : 'text-[var(--muted)] hover:text-[var(--ink)] dark:hover:text-white'
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
-      </nav>
+        <nav
+          className="mt-4 inline-flex flex-wrap gap-1 rounded-[10px] bg-[#e8f0ec] p-1"
+          aria-label="Automation pages"
+        >
+          {AUTOMATION_PAGES.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setPage(p.id)}
+              className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold transition ${
+                page === p.id
+                  ? 'bg-white text-[var(--ink)] shadow-sm'
+                  : 'text-[var(--muted)] hover:text-[var(--ink)]'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </nav>
+      </div>
 
       {error && page === 'dashboard' && (
         <p className="mb-4 rounded-[12px] border border-[var(--danger)] bg-[#fdeceb] px-4 py-3 text-sm text-[var(--danger)]">
