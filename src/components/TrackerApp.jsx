@@ -46,7 +46,7 @@ function notifToast(n) {
   const msg = `${n.title}: ${n.body}`;
   if (n.type === 'call') toast.info(msg, { toastId: n.id, autoClose: 8000 });
   else if (n.type === 'finished' || n.type === 'streak' || n.type === 'code') toast.success(msg, { toastId: n.id });
-  else if (n.type === 'attempted') toast.info(msg, { toastId: n.id });
+  else if (n.type === 'attempted' || n.type === 'revision') toast.info(msg, { toastId: n.id });
   else if (n.type === 'automation') {
     const lower = `${n.title} ${n.body}`.toLowerCase();
     if (lower.includes('fail') || lower.includes('expired')) toast.error(msg, { toastId: n.id });
@@ -639,6 +639,7 @@ export default function TrackerApp() {
     markNotifsRead(n.id);
     setNotifOpen(false);
     if (n.linkTab) setTab(n.linkTab);
+    if (n.linkTab === 'revise') loadRevision();
   }
 
   async function sendChat(e) {
@@ -919,6 +920,26 @@ export default function TrackerApp() {
       toast.error(err.message);
     } finally {
       setRevisionBusyId(null);
+    }
+  }
+
+  async function bulkScheduleRevisions({ fromDate, toDate, date }) {
+    try {
+      const data = await api('/api/revision', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'bulk-schedule', fromDate, toDate, date }),
+      });
+      setRevision(data);
+      const scheduled = data.scheduled || 0;
+      if (scheduled === 0) {
+        toast.info('No solved problems found in that range');
+      } else {
+        toast.success(
+          `${scheduled} problem${scheduled === 1 ? '' : 's'} scheduled for revision — reminder comes the day before`
+        );
+      }
+    } catch (err) {
+      toast.error(err.message);
     }
   }
 
@@ -1571,6 +1592,7 @@ export default function TrackerApp() {
             onRevise={reviseItem}
             onReset={resetRevisionItem}
             onSchedule={scheduleRevisionItem}
+            onBulkSchedule={bulkScheduleRevisions}
             onEnableTracking={enableRevisionTracking}
             onAddManual={addManualRevision}
             onOpenItem={openRevisionItem}

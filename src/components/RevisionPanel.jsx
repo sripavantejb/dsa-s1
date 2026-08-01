@@ -513,6 +513,151 @@ function CalendarTimeline({ revision, busyId, onSchedule, onBulkSchedule, onOpen
           </div>
         </div>
       </div>
+
+      <div className="mt-4 rounded-[14px] border border-[var(--line)] bg-[#fbfdfc] p-3.5">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <p className="m-0 text-sm font-bold">Bulk revision scheduling</p>
+            <p className="mt-1 mb-0 text-xs text-[var(--muted)]">
+              Pick a date range (or solve weeks) — every problem you solved in that period gets
+              scheduled for revision on the day you choose. You&apos;ll get an alert the day before as a
+              reminder.
+            </p>
+          </div>
+          {(rangeStart || weekFrom || weekTo) && (
+            <button
+              type="button"
+              onClick={clearRange}
+              className="rounded-[10px] border border-[var(--line)] bg-white px-2.5 py-1.5 text-xs font-semibold text-[var(--muted)]"
+            >
+              Clear selection
+            </button>
+          )}
+        </div>
+
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <div className="rounded-xl border border-[var(--line)] bg-white p-3">
+            <p className="m-0 text-xs font-semibold uppercase tracking-[0.05em] text-[var(--muted)]">
+              By date range
+            </p>
+            <p className="mt-1 mb-2 text-[0.7rem] text-[var(--muted)]">
+              Type dates below, or turn on “Select range” and tap two days on the calendar.
+            </p>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="text-xs font-semibold text-[var(--muted)]">
+                From
+                <input
+                  type="date"
+                  value={rangeStart}
+                  onChange={(e) => {
+                    setRangeStart(e.target.value);
+                    setWeekFrom('');
+                    setWeekTo('');
+                  }}
+                  className="mt-1 block rounded-[10px] border border-[var(--line)] bg-[#fbfdfc] px-2.5 py-2 text-sm text-[var(--ink)]"
+                />
+              </label>
+              <label className="text-xs font-semibold text-[var(--muted)]">
+                To
+                <input
+                  type="date"
+                  value={rangeEnd}
+                  min={rangeStart || undefined}
+                  onChange={(e) => {
+                    setRangeEnd(e.target.value);
+                    setWeekFrom('');
+                    setWeekTo('');
+                  }}
+                  className="mt-1 block rounded-[10px] border border-[var(--line)] bg-[#fbfdfc] px-2.5 py-2 text-sm text-[var(--ink)]"
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-[var(--line)] bg-white p-3">
+            <p className="m-0 text-xs font-semibold uppercase tracking-[0.05em] text-[var(--muted)]">
+              By solve week
+            </p>
+            <p className="mt-1 mb-2 text-[0.7rem] text-[var(--muted)]">
+              Week 1 = the week (Mon–Sun) of your first solve.
+            </p>
+            {solveWeeks.length === 0 ? (
+              <p className="mb-0 mt-2 text-sm text-[var(--muted)]">No solved problems yet.</p>
+            ) : (
+              <div className="flex flex-wrap items-end gap-2">
+                <label className="text-xs font-semibold text-[var(--muted)]">
+                  From week
+                  <select
+                    value={weekFrom}
+                    onChange={(e) => onPickWeekFrom(e.target.value)}
+                    className="mt-1 block rounded-[10px] border border-[var(--line)] bg-[#fbfdfc] px-2.5 py-2 text-sm text-[var(--ink)]"
+                  >
+                    <option value="">Select…</option>
+                    {solveWeeks.map((w) => (
+                      <option key={w.num} value={w.num}>
+                        Week {w.num} · {w.count} solved
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-xs font-semibold text-[var(--muted)]">
+                  To week
+                  <select
+                    value={weekTo}
+                    onChange={(e) => onPickWeekTo(e.target.value)}
+                    className="mt-1 block rounded-[10px] border border-[var(--line)] bg-[#fbfdfc] px-2.5 py-2 text-sm text-[var(--ink)]"
+                  >
+                    <option value="">Select…</option>
+                    {solveWeeks.map((w) => (
+                      <option key={w.num} value={w.num}>
+                        Week {w.num} · {w.count} solved
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-end justify-between gap-3 rounded-xl border border-[var(--line)] bg-white p-3">
+          <div>
+            <p className="m-0 text-sm font-semibold text-[var(--ink)]">
+              {rangeStart ? (
+                <>
+                  {formatDate(rangeStart)} → {formatDate(rangeEnd || rangeStart)} ·{' '}
+                  <span className="text-[var(--accent)]">{rangeCount} problem{rangeCount === 1 ? '' : 's'}</span>{' '}
+                  solved in this range
+                </>
+              ) : (
+                'No range selected yet'
+              )}
+            </p>
+            <p className="mt-0.5 mb-0 font-mono text-[0.68rem] text-[var(--muted)]">
+              Reminder alert arrives the day before the revision date.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="text-xs font-semibold text-[var(--muted)]">
+              Revise on
+              <input
+                type="date"
+                value={bulkDate}
+                onChange={(e) => setBulkDate(e.target.value)}
+                className="mt-1 block rounded-[10px] border border-[var(--line)] bg-[#fbfdfc] px-2.5 py-2 text-sm text-[var(--ink)]"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={!rangeStart || !bulkDate || rangeCount === 0 || bulkSaving}
+              onClick={submitBulk}
+              className="rounded-[10px] bg-[var(--accent)] px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {bulkSaving ? 'Scheduling…' : `Schedule ${rangeCount || ''} for revision`}
+            </button>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }
@@ -525,6 +670,7 @@ export function RevisionPanel({
   onRevise,
   onReset,
   onSchedule,
+  onBulkSchedule,
   onEnableTracking,
   onAddManual,
   onOpenItem,
@@ -693,6 +839,7 @@ export function RevisionPanel({
         revision={revision}
         busyId={busyId}
         onSchedule={onSchedule}
+        onBulkSchedule={onBulkSchedule}
         onOpenItem={onOpenItem}
       />
 

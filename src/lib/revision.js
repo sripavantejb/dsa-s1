@@ -178,47 +178,47 @@ export function applyScheduleDate(item, scheduledFor) {
 
 /**
  * Schedule every problem solved between fromDate and toDate (inclusive) for
- * revision on scheduledFor. Auto-tracks solved-but-untracked problems whose
- * solve date falls in the range.
+ * revision on scheduledFor. Uses the same timeline the calendar shows, so the
+ * count matches the UI exactly. Auto-tracks solved-but-untracked problems.
  */
 export async function bulkScheduleRevisions(username, user, fromDate, toDate, scheduledFor) {
-  const from = startOfLocalDay(fromDate);
-  const endExclusive = addDaysDate(toDate, 1);
+  const fromKey = dateKeyFromDate(startOfLocalDay(fromDate));
+  const toKey = dateKeyFromDate(startOfLocalDay(toDate));
 
-  const items = await RevisionItem.find({
-    username,
-    solvedAt: { $gte: from, $lt: endExclusive },
-  });
+  const dash = await buildRevisionDashboard(username, user);
+  const ids = new Set();
+  const untrackedByQid = new Map();
+  for (const key of dash.timeline.dates) {
+    if (key < fromKey || key > toKey) continue;
+    const day = dash.timeline.byDate[key];
+    for (const event of [...(day.solved || []), ...(day.external || [])]) {
+      if (event.id) ids.add(event.id);
+      else if (event.qid) untrackedByQid.set(event.qid, key);
+    }
+  }
 
   let created = 0;
-  const trackedQids = new Set(
-    (await RevisionItem.find({ username, qid: { $ne: null } }).select('qid').lean()).map(
-      (i) => i.qid
-    )
-  );
-  const untrackedQids = (user?.solved || []).filter((qid) => !trackedQids.has(qid));
-  for (const qid of untrackedQids) {
-    let solvedAt = guessSolvedAt(user, qid);
-    if (!solvedAt) solvedAt = await guessSolvedAtFromActivity(username, qid);
-    if (!solvedAt) continue;
-    const day = startOfLocalDay(solvedAt);
-    if (day < from || day >= endExclusive) continue;
+  for (const [qid, key] of untrackedByQid) {
     const question = await Question.findOne({ qid }).lean();
     if (!question) continue;
-    const item = await ensureRevisionForSolved(username, question, solvedAt);
-    const doc = await RevisionItem.findById(item._id);
-    if (doc) {
-      items.push(doc);
+    const [y, m, d] = key.split('-').map(Number);
+    const item = await ensureRevisionForSolved(username, question, new Date(y, m - 1, d));
+    if (item) {
+      ids.add(String(item._id));
       created += 1;
     }
   }
 
-  for (const item of items) {
+  let scheduled = 0;
+  for (const id of ids) {
+    const item = await RevisionItem.findOne({ _id: id, username });
+    if (!item) continue;
     applyScheduleDate(item, scheduledFor);
     await item.save();
+    scheduled += 1;
   }
 
-  return { scheduled: items.length, created };
+  return { scheduled, created };
 }
 
 /**
