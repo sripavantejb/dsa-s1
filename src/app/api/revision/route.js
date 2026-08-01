@@ -5,7 +5,9 @@ import { getAuthUser } from '@/lib/auth';
 import Question from '@/lib/models/Question.js';
 import RevisionItem from '@/lib/models/RevisionItem.js';
 import {
+  applyScheduleDate,
   buildRevisionDashboard,
+  bulkScheduleRevisions,
   ensureRevisionForSolved,
   markRevised,
   resetRevisionSchedule,
@@ -89,6 +91,22 @@ export async function POST(req) {
       return NextResponse.json({ created: created.length, items: created, ...dashboard });
     }
 
+    if (action === 'bulk-schedule') {
+      const fromDate = parseDateInput(body.fromDate);
+      const toDate = parseDateInput(body.toDate);
+      const scheduledFor = parseDateInput(body.date);
+      if (!fromDate || !toDate) {
+        return NextResponse.json({ message: 'Valid from/to dates required' }, { status: 400 });
+      }
+      if (!scheduledFor) {
+        return NextResponse.json({ message: 'Valid revision date required' }, { status: 400 });
+      }
+      const [start, end] = fromDate <= toDate ? [fromDate, toDate] : [toDate, fromDate];
+      const result = await bulkScheduleRevisions(user.username, user, start, end, scheduledFor);
+      const dashboard = await buildRevisionDashboard(user.username, user);
+      return NextResponse.json({ ...result, ...dashboard });
+    }
+
     if (action === 'manual') {
       const title = String(body.title || '').trim();
       if (!title) return NextResponse.json({ message: 'Problem name required' }, { status: 400 });
@@ -162,23 +180,7 @@ export async function PATCH(req) {
       if (!scheduledFor) {
         return NextResponse.json({ message: 'Valid revision date required' }, { status: 400 });
       }
-      item.nextRevisionAt = scheduledFor;
-      item.trackingActive = true;
-      const history = [...(item.history || [])];
-      const currentIndex = history.findIndex(
-        (entry) => entry.week === item.stage && !entry.completedAt
-      );
-      if (currentIndex >= 0) {
-        history[currentIndex].scheduledFor = scheduledFor;
-      } else {
-        history.push({
-          week: item.stage || 1,
-          scheduledFor,
-          completedAt: null,
-        });
-      }
-      item.history = history;
-      item.markModified('history');
+      applyScheduleDate(item, scheduledFor);
       await item.save();
     } else {
       return NextResponse.json({ message: 'Unknown action' }, { status: 400 });

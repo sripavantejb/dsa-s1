@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/mongodb';
 import { ensureSeeded } from '@/lib/seed';
 import { getAuthUser } from '@/lib/auth';
 import Notification from '@/lib/models/Notification.js';
+import { ensureRevisionReminders } from '@/lib/revision';
 
 function serialize(n) {
   return {
@@ -24,6 +25,13 @@ export async function GET(req) {
     await ensureSeeded();
     const user = await getAuthUser();
     if (!user) return NextResponse.json({ message: 'Login required' }, { status: 401 });
+
+    // Generate day-before / due-today revision reminder alerts (deduped)
+    try {
+      await ensureRevisionReminders(user);
+    } catch (remErr) {
+      console.error('revision reminders failed', remErr);
+    }
 
     const { searchParams } = new URL(req.url);
     const since = searchParams.get('since');

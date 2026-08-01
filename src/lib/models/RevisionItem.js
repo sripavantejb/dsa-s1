@@ -33,6 +33,8 @@ const RevisionItemSchema = new mongoose.Schema(
     nextRevisionAt: { type: Date, required: true, index: true },
     lastRevisedAt: { type: Date, default: null },
     history: { type: [RevisionHistorySchema], default: [] },
+    /** Date key of nextRevisionAt for which a day-before reminder was already sent */
+    reminderKey: { type: String, default: '' },
   },
   { timestamps: true }
 );

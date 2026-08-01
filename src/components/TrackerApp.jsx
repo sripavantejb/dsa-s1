@@ -6,6 +6,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import { SnapAvatar } from './SnapAvatar';
 import { CallController } from './CallPanel';
 import { RevisionPanel, revisionBadgeToneClass } from './RevisionPanel';
+import { AutomationPanel } from './leetcode/AutomationPanel';
+import { FlameIcon } from './leetcode/ui';
 import { DEFAULT_SHEET, SHEETS } from '@/lib/sheets';
 
 const REACTION_EMOJIS = ['❤️', '👍', '😂', '🔥', '💯', '😮', '😢', '👏'];
@@ -45,7 +47,11 @@ function notifToast(n) {
   if (n.type === 'call') toast.info(msg, { toastId: n.id, autoClose: 8000 });
   else if (n.type === 'finished' || n.type === 'streak' || n.type === 'code') toast.success(msg, { toastId: n.id });
   else if (n.type === 'attempted') toast.info(msg, { toastId: n.id });
-  else toast.warn(msg, { toastId: n.id });
+  else if (n.type === 'automation') {
+    const lower = `${n.title} ${n.body}`.toLowerCase();
+    if (lower.includes('fail') || lower.includes('expired')) toast.error(msg, { toastId: n.id });
+    else toast.success(msg, { toastId: n.id });
+  } else toast.warn(msg, { toastId: n.id });
   popBrowserNotification(n.title, n.body);
 }
 
@@ -1131,6 +1137,14 @@ export default function TrackerApp() {
                 </span>
               )}
             </button>
+            <button
+              type="button"
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-semibold ${tab === 'automation' ? 'bg-white text-[var(--ink)] shadow-sm' : 'text-[var(--muted)]'}`}
+              onClick={() => setTab('automation')}
+            >
+              <FlameIcon className="h-3.5 w-3.5" />
+              Automation
+            </button>
           </nav>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -1232,7 +1246,7 @@ export default function TrackerApp() {
             : 'mx-auto w-[min(1100px,calc(100%-2rem))] py-6 pb-12'
         }
       >
-        {tab !== 'chat' && tab !== 'revise' && (
+        {tab !== 'chat' && tab !== 'revise' && tab !== 'automation' && (
           <>
         <section className="mb-4 rounded-[18px] border border-[var(--line)] bg-white p-4 shadow-[var(--shadow)] animate-rise">
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -1563,6 +1577,8 @@ export default function TrackerApp() {
             questionsByQid={null}
           />
         )}
+
+        {tab === 'automation' && <AutomationPanel />}
 
         {tab === 'live' && (
           <section className="rounded-[18px] border border-[var(--line)] bg-white p-4 shadow-[var(--shadow)]">

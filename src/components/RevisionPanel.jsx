@@ -149,7 +149,14 @@ function eventLabel(type) {
   return 'Marked unsolved';
 }
 
-function CalendarTimeline({ revision, busyId, onSchedule, onOpenItem }) {
+const MS_DAY = 24 * 60 * 60 * 1000;
+
+function solvedCountOn(timeline, key) {
+  const events = timeline.byDate?.[key];
+  return (events?.solved?.length || 0) + (events?.external?.length || 0);
+}
+
+function CalendarTimeline({ revision, busyId, onSchedule, onBulkSchedule, onOpenItem }) {
   const timeline = revision?.timeline || { byDate: {}, dates: [] };
   const items = revision?.items || [];
   const today = dateKey();
@@ -159,6 +166,108 @@ function CalendarTimeline({ revision, busyId, onSchedule, onOpenItem }) {
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [planItemId, setPlanItemId] = useState('');
+  const [rangeMode, setRangeMode] = useState(false);
+  const [rangeStart, setRangeStart] = useState('');
+  const [rangeEnd, setRangeEnd] = useState('');
+  const [weekFrom, setWeekFrom] = useState('');
+  const [weekTo, setWeekTo] = useState('');
+  const [bulkDate, setBulkDate] = useState(() => dateKey(new Date(Date.now() + 7 * MS_DAY)));
+  const [bulkSaving, setBulkSaving] = useState(false);
+
+  // Group solve days into Mon–Sun weeks, numbered from your first solve week
+  const solveWeeks = useMemo(() => {
+    const dates = (timeline.dates || []).filter((key) => solvedCountOn(timeline, key) > 0);
+    if (!dates.length) return [];
+    const first = dateFromKey(dates[0]);
+    const firstMonday = new Date(first);
+    firstMonday.setDate(first.getDate() - ((first.getDay() + 6) % 7));
+    firstMonday.setHours(0, 0, 0, 0);
+    const weeks = new Map();
+    for (const key of dates) {
+      const idx = Math.floor((dateFromKey(key) - firstMonday) / (7 * MS_DAY));
+      const count = solvedCountOn(timeline, key);
+      const existing = weeks.get(idx);
+      if (existing) {
+        existing.count += count;
+      } else {
+        const start = new Date(firstMonday);
+        start.setDate(firstMonday.getDate() + idx * 7);
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        weeks.set(idx, { num: idx + 1, startKey: dateKey(start), endKey: dateKey(end), count });
+      }
+    }
+    return [...weeks.values()].sort((a, b) => a.num - b.num);
+  }, [timeline]);
+
+  const rangeCount = useMemo(() => {
+    if (!rangeStart) return 0;
+    const end = rangeEnd || rangeStart;
+    let count = 0;
+    for (const key of timeline.dates || []) {
+      if (key < rangeStart || key > end) continue;
+      count += solvedCountOn(timeline, key);
+    }
+    return count;
+  }, [rangeStart, rangeEnd, timeline]);
+
+  const applyWeekRange = (fromNum, toNum) => {
+    const from = solveWeeks.find((w) => w.num === Number(fromNum));
+    const to = solveWeeks.find((w) => w.num === Number(toNum));
+    if (!from || !to) return;
+    const [a, b] = from.num <= to.num ? [from, to] : [to, from];
+    setRangeStart(a.startKey);
+    setRangeEnd(b.endKey);
+  };
+
+  const onPickWeekFrom = (value) => {
+    setWeekFrom(value);
+    if (value) applyWeekRange(value, weekTo || value);
+  };
+
+  const onPickWeekTo = (value) => {
+    setWeekTo(value);
+    if (value) applyWeekRange(weekFrom || value, value);
+  };
+
+  const clearRange = () => {
+    setRangeStart('');
+    setRangeEnd('');
+    setWeekFrom('');
+    setWeekTo('');
+  };
+
+  const onDayClick = (key) => {
+    if (!rangeMode) {
+      setSelectedDate(key);
+      return;
+    }
+    setWeekFrom('');
+    setWeekTo('');
+    if (!rangeStart || (rangeStart && rangeEnd)) {
+      setRangeStart(key);
+      setRangeEnd('');
+    } else if (key < rangeStart) {
+      setRangeEnd(rangeStart);
+      setRangeStart(key);
+    } else {
+      setRangeEnd(key);
+    }
+  };
+
+  const submitBulk = async () => {
+    if (!rangeStart || !bulkDate || bulkSaving) return;
+    setBulkSaving(true);
+    try {
+      await onBulkSchedule({
+        fromDate: rangeStart,
+        toDate: rangeEnd || rangeStart,
+        date: bulkDate,
+      });
+    } finally {
+      setBulkSaving(false);
+    }
+  };
 
   const calendarDays = useMemo(() => {
     const year = monthCursor.getFullYear();
@@ -215,13 +324,31 @@ function CalendarTimeline({ revision, busyId, onSchedule, onOpenItem }) {
             See what you solved each day, external links added, and every revision date.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => jumpToDate(today)}
-          className="rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-xs font-semibold text-[var(--accent)]"
-        >
-          Today
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setRangeMode((v) => {
+                if (v) clearRange();
+                return !v;
+              });
+            }}
+            className={`rounded-[10px] border px-3 py-2 text-xs font-semibold ${
+              rangeMode
+                ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
+                : 'border-[var(--line)] bg-white text-[var(--muted)]'
+            }`}
+          >
+            {rangeMode ? 'Range mode on' : 'Select range'}
+          </button>
+          <button
+            type="button"
+            onClick={() => jumpToDate(today)}
+            className="rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-xs font-semibold text-[var(--accent)]"
+          >
+            Today
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
@@ -264,18 +391,26 @@ function CalendarTimeline({ revision, busyId, onSchedule, onOpenItem }) {
               const solvedCount = (events?.solved?.length || 0) + (events?.external?.length || 0);
               const revisedCount = events?.revised?.length || 0;
               const dueCount = events?.due?.length || 0;
-              const active = selectedDate === key;
+              const active = !rangeMode && selectedDate === key;
+              const rangeEndKey = rangeEnd || (rangeStart && !rangeEnd ? rangeStart : '');
+              const inRange =
+                rangeMode && rangeStart && key >= rangeStart && key <= (rangeEndKey || rangeStart);
+              const isRangeEdge = rangeMode && (key === rangeStart || key === rangeEnd);
               return (
                 <button
                   key={key}
                   type="button"
-                  onClick={() => setSelectedDate(key)}
+                  onClick={() => onDayClick(key)}
                   className={`relative aspect-square rounded-lg border p-1 text-sm transition ${
-                    active
-                      ? 'border-[var(--accent)] bg-[var(--accent-soft)] font-bold text-[var(--accent)]'
-                      : key === today
-                        ? 'border-[#9acbb2] bg-white'
-                        : 'border-transparent bg-white hover:border-[var(--line)]'
+                    isRangeEdge
+                      ? 'border-[var(--accent)] bg-[var(--accent)] font-bold text-white'
+                      : inRange
+                        ? 'border-[var(--accent)] bg-[var(--accent-soft)] font-semibold text-[var(--accent)]'
+                        : active
+                          ? 'border-[var(--accent)] bg-[var(--accent-soft)] font-bold text-[var(--accent)]'
+                          : key === today
+                            ? 'border-[#9acbb2] bg-white'
+                            : 'border-transparent bg-white hover:border-[var(--line)]'
                   }`}
                   title={`${solvedCount} solved/added, ${revisedCount} revised, ${dueCount} due`}
                 >

@@ -1,6 +1,7 @@
 import RevisionItem from './models/RevisionItem.js';
 import Question from './models/Question.js';
 import Activity from './models/Activity.js';
+import Notification from './models/Notification.js';
 import { normalizeDailySolves } from './streak.js';
 
 const MS_DAY = 24 * 60 * 60 * 1000;
@@ -152,6 +153,142 @@ export async function markRevised(item, when = new Date()) {
   item.markModified('history');
   await item.save();
   return item;
+}
+
+/** Set the next revision date on an item (updates open history entry). Caller saves. */
+export function applyScheduleDate(item, scheduledFor) {
+  item.nextRevisionAt = scheduledFor;
+  item.trackingActive = true;
+  const history = [...(item.history || [])];
+  const currentIndex = history.findIndex(
+    (entry) => entry.week === item.stage && !entry.completedAt
+  );
+  if (currentIndex >= 0) {
+    history[currentIndex].scheduledFor = scheduledFor;
+  } else {
+    history.push({
+      week: item.stage || 1,
+      scheduledFor,
+      completedAt: null,
+    });
+  }
+  item.history = history;
+  item.markModified('history');
+}
+
+/**
+ * Schedule every problem solved between fromDate and toDate (inclusive) for
+ * revision on scheduledFor. Auto-tracks solved-but-untracked problems whose
+ * solve date falls in the range.
+ */
+export async function bulkScheduleRevisions(username, user, fromDate, toDate, scheduledFor) {
+  const from = startOfLocalDay(fromDate);
+  const endExclusive = addDaysDate(toDate, 1);
+
+  const items = await RevisionItem.find({
+    username,
+    solvedAt: { $gte: from, $lt: endExclusive },
+  });
+
+  let created = 0;
+  const trackedQids = new Set(
+    (await RevisionItem.find({ username, qid: { $ne: null } }).select('qid').lean()).map(
+      (i) => i.qid
+    )
+  );
+  const untrackedQids = (user?.solved || []).filter((qid) => !trackedQids.has(qid));
+  for (const qid of untrackedQids) {
+    let solvedAt = guessSolvedAt(user, qid);
+    if (!solvedAt) solvedAt = await guessSolvedAtFromActivity(username, qid);
+    if (!solvedAt) continue;
+    const day = startOfLocalDay(solvedAt);
+    if (day < from || day >= endExclusive) continue;
+    const question = await Question.findOne({ qid }).lean();
+    if (!question) continue;
+    const item = await ensureRevisionForSolved(username, question, solvedAt);
+    const doc = await RevisionItem.findById(item._id);
+    if (doc) {
+      items.push(doc);
+      created += 1;
+    }
+  }
+
+  for (const item of items) {
+    applyScheduleDate(item, scheduledFor);
+    await item.save();
+  }
+
+  return { scheduled: items.length, created };
+}
+
+/**
+ * Create "due tomorrow" / "due today" reminder alerts for the user's scheduled
+ * revisions. Deduped per item + revision date via reminderKey — safe to call
+ * on every notifications poll.
+ */
+export async function ensureRevisionReminders(user) {
+  const username = user?.username;
+  if (!username) return;
+
+  const today = startOfLocalDay(new Date());
+  const tomorrow = addDaysDate(today, 1);
+  const dayAfter = addDaysDate(today, 2);
+
+  const items = await RevisionItem.find({
+    username,
+    trackingActive: true,
+    nextRevisionAt: { $gte: today, $lt: dayAfter },
+  });
+
+  const pending = items.filter(
+    (item) => (item.reminderKey || '') !== dateKeyFromDate(item.nextRevisionAt)
+  );
+  if (!pending.length) return;
+
+  const dueTomorrow = pending.filter(
+    (item) => startOfLocalDay(item.nextRevisionAt).getTime() === tomorrow.getTime()
+  );
+  const dueToday = pending.filter(
+    (item) => startOfLocalDay(item.nextRevisionAt).getTime() === today.getTime()
+  );
+
+  const summarize = (list) => {
+    const titles = list.slice(0, 3).map((item) => item.title);
+    const extra = list.length - titles.length;
+    return titles.join(', ') + (extra > 0 ? ` +${extra} more` : '');
+  };
+
+  const notifs = [];
+  if (dueTomorrow.length) {
+    notifs.push({
+      toUsername: username,
+      fromUsername: username,
+      fromDisplayName: user.displayName || username,
+      type: 'revision',
+      title: `Revision reminder — ${dueTomorrow.length} due tomorrow`,
+      body: summarize(dueTomorrow),
+      linkTab: 'revise',
+      read: false,
+    });
+  }
+  if (dueToday.length) {
+    notifs.push({
+      toUsername: username,
+      fromUsername: username,
+      fromDisplayName: user.displayName || username,
+      type: 'revision',
+      title: `Revision due today — ${dueToday.length} problem${dueToday.length === 1 ? '' : 's'}`,
+      body: summarize(dueToday),
+      linkTab: 'revise',
+      read: false,
+    });
+  }
+  if (notifs.length) await Notification.insertMany(notifs);
+
+  for (const item of pending) {
+    item.reminderKey = dateKeyFromDate(item.nextRevisionAt);
+    await item.save();
+  }
 }
 
 /** Reset schedule from a start date (Week 1 = start + 7 days) */
