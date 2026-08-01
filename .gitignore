@@ -33,6 +33,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# LeetCode session exports — never commit
+leetcode-state.json
+
 # vercel
 .vercel
 
